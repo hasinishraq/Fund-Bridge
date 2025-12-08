@@ -16,3 +16,14 @@ management:
     web:
       exposure:
         include: health,info
+storage:
+  provider: ${STORAGE_PROVIDER:local}
+  endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
+  bucket: ${STORAGE_BUCKET:wallet-data}
+  base-path: ${STORAGE_BASE_PATH:/data/wallet}
+  credentials:
+    access-key: ${STORAGE_ACCESS_KEY:changeme}
+    secret-key: ${STORAGE_SECRET_KEY:changeme}
+  paths:
+    statements: statements
+    receipts: receipts

@@ -1,10 +1,12 @@
 spring:
+  config:
+    import: optional:configserver:http://localhost:8888
   application:
     name: api-gateway
   cloud:
     config:
       uri: http://localhost:8888
-      fail-fast: true
+      fail-fast: false
     gateway:
       discovery:
         locator:
