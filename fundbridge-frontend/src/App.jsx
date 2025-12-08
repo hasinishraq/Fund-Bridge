@@ -1,6 +1,5 @@
 ﻿import {
   BrowserRouter,
-  Navigate,
   Route,
   Routes,
   Outlet,
@@ -15,6 +14,7 @@ import LoanDetails from './pages/loan/LoanDetails'
 import WalletBalance from './pages/wallet/WalletBalance'
 import Transactions from './pages/wallet/Transactions'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import HomePage from './pages/home/HomePage'
 import PrivateRoute from './routes/PrivateRoute'
 import DashboardLayout from './components/layout/DashboardLayout'
 
@@ -52,7 +52,7 @@ function App() {
           </Route>
         </Route>
 
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
