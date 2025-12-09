@@ -43,15 +43,18 @@ public class KycApplicationService {
             if (applicantResponse == null || !StringUtils.hasText(applicantResponse.id())) {
                 throw new KycProviderException("KYC provider returned an invalid applicant response");
             }
-            SumsubWebSdkLinkResponse webSdkLink = sumsubClient.createWebSdkLink(
-                    new SumsubWebSdkLinkRequest(externalUserId, properties.getLevelName(), properties.getWebsdkTtlSeconds())
-            );
+            String reviewUrl = null;
+            try {
+                SumsubWebSdkLinkResponse webSdkLink = sumsubClient.createWebSdkLink(
+                        new SumsubWebSdkLinkRequest(externalUserId, properties.getLevelName(), properties.getWebsdkTtlSeconds())
+                );
+                reviewUrl = webSdkLink != null ? webSdkLink.url() : null;
+            } catch (KycProviderException linkException) {
+                log.warn("Created Sumsub applicant {} for user {} but failed to obtain WebSDK link",
+                        applicantResponse.id(), request.userId(), linkException);
+            }
 
-            return new KycApplicantResponse(
-                    applicantResponse.id(),
-                    mapStatus(applicantResponse),
-                    webSdkLink != null ? webSdkLink.url() : null
-            );
+            return new KycApplicantResponse(applicantResponse.id(), mapStatus(applicantResponse), reviewUrl);
         } catch (KycProviderException exception) {
             log.error("Failed to create Sumsub applicant for user {}. Returning stub response.", request.userId(), exception);
             return buildStubResponse(externalUserId);
