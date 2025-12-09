@@ -58,3 +58,8 @@ app:
     exposed-headers:
       - Authorization
     allow-credentials: true
+  recaptcha:
+    enabled: ${AUTH_RECAPTCHA_ENABLED:true}
+    secret-key: ${AUTH_RECAPTCHA_SECRET_KEY:your_recaptcha_secret_key_here}
+    verify-url: https://www.google.com/recaptcha/api/siteverify
+    minimum-score: ${AUTH_RECAPTCHA_MIN_SCORE:0.5}

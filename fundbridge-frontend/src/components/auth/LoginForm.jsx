@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import PropTypes from 'prop-types'
+import ReCAPTCHA from 'react-google-recaptcha'
 import Button from '../common/Button'
 import { validateLogin } from '../../utils/validators'
 
-const initialState = { email: '', password: '' }
+const initialState = { email: '', password: '', captchaToken: '' }
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
 const extractFieldErrors = (error) => {
   const violations = error?.response?.data?.errors
@@ -23,6 +25,9 @@ const LoginForm = ({ onSubmit, loading }) => {
   const [values, setValues] = useState(initialState)
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
+  const recaptchaRef = useRef(null)
+  const isCaptchaEnabled = Boolean(recaptchaSiteKey)
+  const isSubmitDisabled = loading || (isCaptchaEnabled && !values.captchaToken)
 
   const handleChange = (event) => {
     setValues((prev) => ({
@@ -31,9 +36,37 @@ const LoginForm = ({ onSubmit, loading }) => {
     }))
   }
 
+  const handleCaptchaChange = (token) => {
+    setValues((prev) => ({
+      ...prev,
+      captchaToken: token || '',
+    }))
+    if (token) {
+      setErrors((prev) => {
+        if (!prev.captchaToken) {
+          return prev
+        }
+        const next = { ...prev }
+        delete next.captchaToken
+        return next
+      })
+    }
+  }
+
+  const resetCaptcha = () => {
+    if (!isCaptchaEnabled) {
+      return
+    }
+    recaptchaRef.current?.reset()
+    setValues((prev) => ({
+      ...prev,
+      captchaToken: '',
+    }))
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const validationErrors = validateLogin(values)
+    const validationErrors = validateLogin(values, { requireCaptcha: isCaptchaEnabled })
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) {
       return
@@ -44,8 +77,10 @@ const LoginForm = ({ onSubmit, loading }) => {
       await onSubmit({
         email: values.email.trim().toLowerCase(),
         password: values.password,
+        captchaToken: values.captchaToken,
       })
     } catch (error) {
+      resetCaptcha()
       const serverErrors = extractFieldErrors(error)
       if (serverErrors) {
         setErrors(serverErrors)
@@ -62,8 +97,9 @@ const LoginForm = ({ onSubmit, loading }) => {
   }
 
   return (
-    <form className="card" onSubmit={handleSubmit} noValidate>
+    <form className="card auth-form" onSubmit={handleSubmit} noValidate>
       <h2>Welcome Back</h2>
+      <p className="auth-form-note">Use your corporate email to access FundBridge securely.</p>
       {formError && <p className="form-error">{formError}</p>}
       <label htmlFor="email">
         Email
@@ -91,8 +127,19 @@ const LoginForm = ({ onSubmit, loading }) => {
         />
         {errors.password && <span className="field-error">{errors.password}</span>}
       </label>
+      {isCaptchaEnabled && (
+        <div className="recaptcha-field">
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey={recaptchaSiteKey}
+            onChange={handleCaptchaChange}
+            onExpired={resetCaptcha}
+          />
+          {errors.captchaToken && <span className="field-error">{errors.captchaToken}</span>}
+        </div>
+      )}
 
-      <Button type="submit" disabled={loading}>
+      <Button type="submit" disabled={isSubmitDisabled}>
         {loading ? 'Signing in...' : 'Login'}
       </Button>
     </form>

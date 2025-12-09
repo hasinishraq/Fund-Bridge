@@ -7,13 +7,17 @@ export const isAmountValid = (value) => typeof value === 'number' && value > 0
 export const isRequired = (value) =>
   value !== null && value !== undefined && String(value).trim().length > 0
 
-export const validateLogin = ({ email, password }) => {
+export const validateLogin = ({ email, password, captchaToken }, options = {}) => {
   const errors = {}
+  const { requireCaptcha = false } = options
   if (!isEmailValid(email)) {
     errors.email = 'Enter a valid email'
   }
   if (!isRequired(password)) {
     errors.password = 'Password is required'
+  }
+  if (requireCaptcha && !isRequired(captchaToken)) {
+    errors.captchaToken = 'Please complete the captcha challenge'
   }
   return errors
 }

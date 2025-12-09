@@ -23,8 +23,12 @@ const normalizeAuthResponse = ({ token, user }) => ({
   },
 })
 
-export const login = async (credentials) => {
-  const { data } = await client.post('/auth/login', credentials)
+export const login = async ({ email, password, captchaToken }) => {
+  const { data } = await client.post('/auth/login', {
+    email,
+    password,
+    captchaToken,
+  })
   return normalizeAuthResponse(data)
 }
 
