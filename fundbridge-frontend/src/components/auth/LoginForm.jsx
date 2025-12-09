@@ -64,6 +64,14 @@ const LoginForm = ({ onSubmit, loading }) => {
     }))
   }
 
+  const handleCaptchaError = () => {
+    resetCaptcha()
+    setErrors((prev) => ({
+      ...prev,
+      captchaToken: 'Captcha could not be verified. Please try again.',
+    }))
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     const validationErrors = validateLogin(values, { requireCaptcha: isCaptchaEnabled })
@@ -83,7 +91,7 @@ const LoginForm = ({ onSubmit, loading }) => {
       resetCaptcha()
       const serverErrors = extractFieldErrors(error)
       if (serverErrors) {
-        setErrors(serverErrors)
+        setErrors((prev) => ({ ...prev, ...serverErrors }))
         setFormError('')
         return
       }
@@ -134,6 +142,7 @@ const LoginForm = ({ onSubmit, loading }) => {
             sitekey={recaptchaSiteKey}
             onChange={handleCaptchaChange}
             onExpired={resetCaptcha}
+            onErrored={handleCaptchaError}
           />
           {errors.captchaToken && <span className="field-error">{errors.captchaToken}</span>}
         </div>
