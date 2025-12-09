@@ -67,7 +67,9 @@ const RegisterForm = ({ onSubmit, loading }) => {
   return (
     <form className="card auth-form" onSubmit={handleSubmit} noValidate>
       <h2>Create Account</h2>
-      <p className="auth-form-note">We will guide you through compliance and workspace activation.</p>
+      <p className="auth-form-note">
+        We will automatically trigger Sumsub KYC so you can verify your identity right away.
+      </p>
       {formError && <p className="form-error">{formError}</p>}
       <label htmlFor="name">
         Full Name

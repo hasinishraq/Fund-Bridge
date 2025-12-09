@@ -16,7 +16,10 @@ public final class UserMapper {
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                user.getRole()
+                user.getRole(),
+                user.getKycApplicantId(),
+                user.getKycStatus(),
+                user.getKycReviewUrl()
         );
     }
 }

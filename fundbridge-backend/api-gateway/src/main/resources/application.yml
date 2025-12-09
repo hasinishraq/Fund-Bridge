@@ -59,6 +59,12 @@ spring:
             - StripPrefix=1
           predicates:
             - Path=/api/admin/**
+        - id: kyc-service
+          uri: lb://kyc-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/kyc/**
       discovery:
         locator:
           enabled: true

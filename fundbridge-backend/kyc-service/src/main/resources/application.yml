@@ -18,3 +18,10 @@ management:
     web:
       exposure:
         include: health,info
+sumsub:
+  enabled: ${SUMSUB_ENABLED:true}
+  base-url: ${SUMSUB_BASE_URL:https://api.sumsub.com}
+  app-token: ${SUMSUB_APP_TOKEN:your_sumsub_app_token_here}
+  secret-key: ${SUMSUB_SECRET_KEY:your_sumsub_secret_key_here}
+  level-name: ${SUMSUB_LEVEL_NAME:id-and-liveness}
+  websdk-ttl-seconds: ${SUMSUB_WEBSDK_TTL_SECONDS:900}
