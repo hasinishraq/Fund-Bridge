@@ -47,8 +47,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidCaptchaException.class)
     public ResponseEntity<ApiError> handleCaptcha(InvalidCaptchaException exception, HttpServletRequest request) {
+        List<ValidationError> errors = List.of(new ValidationError("captchaToken", exception.getMessage()));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiError.of(exception.getMessage(), HttpStatus.BAD_REQUEST, request.getRequestURI()));
+                .body(ApiError.withErrors(exception.getMessage(), HttpStatus.BAD_REQUEST, request.getRequestURI(), errors));
     }
 
     @ExceptionHandler(Exception.class)
