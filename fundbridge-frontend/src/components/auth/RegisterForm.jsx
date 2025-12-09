@@ -43,11 +43,15 @@ const RegisterForm = ({ onSubmit, loading }) => {
     }
     try {
       setFormError('')
-      await onSubmit({
+      const result = await onSubmit({
         name: values.name.trim(),
         email: values.email.trim().toLowerCase(),
         password: values.password,
       })
+      const reviewUrl = result?.user?.kycReviewUrl
+      if (reviewUrl) {
+        window.open(reviewUrl, '_blank', 'noopener,noreferrer')
+      }
     } catch (error) {
       const serverErrors = extractFieldErrors(error)
       if (serverErrors) {
