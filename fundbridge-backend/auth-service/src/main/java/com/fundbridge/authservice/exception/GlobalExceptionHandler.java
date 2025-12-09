@@ -52,6 +52,12 @@ public class GlobalExceptionHandler {
                 .body(ApiError.withErrors(exception.getMessage(), HttpStatus.BAD_REQUEST, request.getRequestURI(), errors));
     }
 
+    @ExceptionHandler(KycIntegrationException.class)
+    public ResponseEntity<ApiError> handleKyc(KycIntegrationException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiError.of(exception.getMessage(), HttpStatus.SERVICE_UNAVAILABLE, request.getRequestURI()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception exception, HttpServletRequest request) {
         log.error("Unexpected error processing {}", request.getRequestURI(), exception);
