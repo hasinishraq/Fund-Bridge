@@ -1,8 +1,23 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { fetchLoans } from '../../api/loanApi'
 import { fetchWalletBalance } from '../../api/walletApi'
 import { API_STATUS, CURRENCY_FORMATTER } from '../../utils/constants'
 import Loader from '../../components/common/Loader'
+import Button from '../../components/common/Button'
+import { useAuth } from '../../context/AuthContext'
+
+const KYC_MESSAGES = {
+  PENDING:
+    'We created your verification profile. Complete the short Sumsub flow to unlock loans and payouts.',
+  IN_REVIEW:
+    'Our compliance partner is reviewing your submission. You will be notified as soon as it clears.',
+  RESUBMIT_REQUIRED:
+    'Additional documents are required. Click continue to re-open the Sumsub flow and upload the missing files.',
+  REJECTED:
+    'Verification was rejected. Contact support or restart the process if you have updated documentation.',
+}
+
+const humanizeStatus = (status) => status.replace(/_/g, ' ')
 
 const Dashboard = () => {
   const [status, setStatus] = useState(API_STATUS.idle)
@@ -11,6 +26,8 @@ const Dashboard = () => {
     loans: [],
     wallet: null,
   })
+  const { user, refreshProfile } = useAuth()
+  const [kycRefreshing, setKycRefreshing] = useState(false)
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -30,6 +47,21 @@ const Dashboard = () => {
     }
     loadDashboard()
   }, [])
+
+  const kycStatus = user?.kycStatus || 'PENDING'
+  const isKycApproved = kycStatus === 'APPROVED'
+  const kycMessage =
+    KYC_MESSAGES[kycStatus] ||
+    'Complete identity verification to access all FundBridge services.'
+
+  const handleRefreshKyc = async () => {
+    setKycRefreshing(true)
+    try {
+      await refreshProfile()
+    } finally {
+      setKycRefreshing(false)
+    }
+  }
 
   if (status === API_STATUS.loading) {
     return (
@@ -55,6 +87,34 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard">
+      {!isKycApproved && (
+        <section className="card kyc-card">
+          <div>
+            <p className="kyc-label">KYC Status</p>
+            <h3>{humanizeStatus(kycStatus)}</h3>
+            <p>{kycMessage}</p>
+          </div>
+          <div className="kyc-actions">
+            {user?.kycReviewUrl && (
+              <a
+                href={user.kycReviewUrl}
+                className="btn btn-primary"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Continue in Sumsub
+              </a>
+            )}
+            <Button
+              variant="ghost"
+              onClick={handleRefreshKyc}
+              disabled={kycRefreshing}
+            >
+              {kycRefreshing ? 'Refreshing...' : 'Refresh status'}
+            </Button>
+          </div>
+        </section>
+      )}
       <div className="stats-grid">
         <div className="card stat-card">
           <p>Total Loans</p>

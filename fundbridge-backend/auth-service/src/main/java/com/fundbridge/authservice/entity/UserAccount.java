@@ -25,6 +25,19 @@ public class UserAccount {
     @Column(nullable = false, length = 40)
     private UserRole role = UserRole.BORROWER;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kyc_status", nullable = false, length = 32)
+    private KycStatus kycStatus = KycStatus.PENDING;
+
+    @Column(name = "kyc_applicant_id", length = 96)
+    private String kycApplicantId;
+
+    @Column(name = "kyc_review_url", length = 1024)
+    private String kycReviewUrl;
+
+    @Column(name = "kyc_last_synced_at")
+    private Instant kycLastSyncedAt;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -81,6 +94,38 @@ public class UserAccount {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public KycStatus getKycStatus() {
+        return kycStatus;
+    }
+
+    public void setKycStatus(KycStatus kycStatus) {
+        this.kycStatus = kycStatus;
+    }
+
+    public String getKycApplicantId() {
+        return kycApplicantId;
+    }
+
+    public void setKycApplicantId(String kycApplicantId) {
+        this.kycApplicantId = kycApplicantId;
+    }
+
+    public String getKycReviewUrl() {
+        return kycReviewUrl;
+    }
+
+    public void setKycReviewUrl(String kycReviewUrl) {
+        this.kycReviewUrl = kycReviewUrl;
+    }
+
+    public Instant getKycLastSyncedAt() {
+        return kycLastSyncedAt;
+    }
+
+    public void setKycLastSyncedAt(Instant kycLastSyncedAt) {
+        this.kycLastSyncedAt = kycLastSyncedAt;
     }
 
     public Instant getCreatedAt() {

@@ -1,5 +1,8 @@
 package com.fundbridge.authservice.service;
 
+import com.fundbridge.authservice.client.kyc.CreateKycApplicantRequest;
+import com.fundbridge.authservice.client.kyc.KycApplicantResponse;
+import com.fundbridge.authservice.client.kyc.KycServiceClient;
 import com.fundbridge.authservice.dto.AuthResponse;
 import com.fundbridge.authservice.dto.LoginRequest;
 import com.fundbridge.authservice.dto.RegisterRequest;
@@ -15,28 +18,36 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.Locale;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final RecaptchaService recaptchaService;
+    private final KycServiceClient kycServiceClient;
 
     public AuthService(UserService userService,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
                        JwtService jwtService,
-                       RecaptchaService recaptchaService) {
+                       RecaptchaService recaptchaService,
+                       KycServiceClient kycServiceClient) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.recaptchaService = recaptchaService;
+        this.kycServiceClient = kycServiceClient;
     }
 
     @Transactional
@@ -53,6 +64,7 @@ public class AuthService {
         userAccount.setRole(UserRole.BORROWER);
 
         UserAccount saved = userService.save(userAccount);
+        startKycVerification(saved);
         UserPrincipal principal = UserPrincipal.from(saved);
         String token = jwtService.generateToken(principal);
         return new AuthResponse(token, UserMapper.toResponse(saved));
@@ -75,5 +87,26 @@ public class AuthService {
             throw new IllegalStateException("No authenticated user in context");
         }
         return UserMapper.toResponse(principal.getUser());
+    }
+
+    private void startKycVerification(UserAccount userAccount) {
+        try {
+            KycApplicantResponse applicantResponse = kycServiceClient.createApplicant(
+                    new CreateKycApplicantRequest(userAccount.getId(), userAccount.getName(), userAccount.getEmail())
+            );
+            if (applicantResponse == null || applicantResponse.applicantId() == null) {
+                log.warn("KYC service returned an invalid response for user {}", userAccount.getEmail());
+                return;
+            }
+            userAccount.setKycApplicantId(applicantResponse.applicantId());
+            if (applicantResponse.status() != null) {
+                userAccount.setKycStatus(applicantResponse.status());
+            }
+            userAccount.setKycReviewUrl(applicantResponse.reviewUrl());
+            userAccount.setKycLastSyncedAt(Instant.now());
+        } catch (Exception exception) {
+            log.error("Unable to start KYC verification for user {}. Proceeding with pending status.",
+                    userAccount.getEmail(), exception);
+        }
     }
 }

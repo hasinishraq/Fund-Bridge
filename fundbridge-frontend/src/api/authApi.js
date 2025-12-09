@@ -20,6 +20,9 @@ const normalizeAuthResponse = ({ token, user }) => ({
     name: user?.name,
     email: user?.email,
     role: user?.role,
+    kycApplicantId: user?.kycApplicantId,
+    kycStatus: user?.kycStatus,
+    kycReviewUrl: user?.kycReviewUrl,
   },
 })
 
