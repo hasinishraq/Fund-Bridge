@@ -1,85 +1,134 @@
-﻿import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import * as authApi from '../api/authApi'
 
-const AuthContext = createContext()
+const STORAGE_KEYS = {
+  token: 'fb_token',
+  user: 'fb_user',
+}
+
+const AuthContext = createContext(null)
+AuthContext.displayName = 'AuthContext'
+
+const readStoredUser = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.user)
+    return raw ? JSON.parse(raw) : null
+  } catch (error) {
+    console.warn('Unable to parse stored user', error)
+    return null
+  }
+}
+
+const persistAuth = ({ token, user }) => {
+  if (!token || !user) {
+    throw new Error('Invalid auth payload')
+  }
+  localStorage.setItem(STORAGE_KEYS.token, token)
+  localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user))
+}
+
+const clearStoredAuth = () => {
+  localStorage.removeItem(STORAGE_KEYS.token)
+  localStorage.removeItem(STORAGE_KEYS.user)
+}
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem('fb_user')
-    return storedUser ? JSON.parse(storedUser) : null
-  })
+  const [user, setUser] = useState(() => readStoredUser())
   const [loading, setLoading] = useState(false)
   const [bootstrapping, setBootstrapping] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('fb_token')
+    const token = localStorage.getItem(STORAGE_KEYS.token)
     if (!token) {
       setBootstrapping(false)
       return
     }
 
+    let cancelled = false
     const loadProfile = async () => {
       try {
         const profile = await authApi.fetchProfile()
-        localStorage.setItem('fb_user', JSON.stringify(profile))
+        if (cancelled) return
+        localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(profile))
         setUser(profile)
       } catch (error) {
         console.error('Unable to fetch profile', error)
-        localStorage.removeItem('fb_token')
-        localStorage.removeItem('fb_user')
-        setUser(null)
+        clearStoredAuth()
+        if (!cancelled) {
+          setUser(null)
+        }
       } finally {
-        setBootstrapping(false)
+        if (!cancelled) {
+          setBootstrapping(false)
+        }
       }
     }
 
     loadProfile()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const persistAuth = ({ token, user: nextUser }) => {
-    localStorage.setItem('fb_token', token)
-    localStorage.setItem('fb_user', JSON.stringify(nextUser))
+  const handleAuthSuccess = useCallback(({ token, user: nextUser }) => {
+    persistAuth({ token, user: nextUser })
     setUser(nextUser)
-  }
+  }, [])
 
-  const login = async (credentials) => {
-    setLoading(true)
-    try {
-      const data = await authApi.login(credentials)
-      persistAuth(data)
-      return data
-    } finally {
-      setLoading(false)
-    }
-  }
+  const login = useCallback(
+    async (credentials) => {
+      setLoading(true)
+      try {
+        const data = await authApi.login(credentials)
+        handleAuthSuccess(data)
+        return data
+      } finally {
+        setLoading(false)
+      }
+    },
+    [handleAuthSuccess],
+  )
 
-  const register = async (payload) => {
-    setLoading(true)
-    try {
-      const data = await authApi.register(payload)
-      persistAuth(data)
-      return data
-    } finally {
-      setLoading(false)
-    }
-  }
+  const register = useCallback(
+    async (payload) => {
+      setLoading(true)
+      try {
+        const data = await authApi.register(payload)
+        handleAuthSuccess(data)
+        return data
+      } finally {
+        setLoading(false)
+      }
+    },
+    [handleAuthSuccess],
+  )
 
-  const logout = () => {
-    localStorage.removeItem('fb_token')
-    localStorage.removeItem('fb_user')
+  const refreshProfile = useCallback(async () => {
+    const profile = await authApi.fetchProfile()
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(profile))
+    setUser(profile)
+    return profile
+  }, [])
+
+  const logout = useCallback(() => {
+    clearStoredAuth()
     setUser(null)
-  }
+  }, [])
 
-  const value = {
-    user,
-    isAuthenticated: Boolean(user),
-    loading,
-    bootstrapping,
-    login,
-    register,
-    logout,
-  }
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: Boolean(user),
+      loading,
+      bootstrapping,
+      login,
+      register,
+      refreshProfile,
+      logout,
+    }),
+    [bootstrapping, loading, login, logout, refreshProfile, register, user],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

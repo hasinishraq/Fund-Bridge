@@ -1,20 +1,30 @@
-﻿import axios from 'axios'
+import axios from 'axios'
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+const rawBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').trim()
+const sanitizedBaseUrl = rawBaseUrl.replace(/\/+$/, '')
+const API_BASE_URL = /\/api(\/|$)/i.test(sanitizedBaseUrl)
+  ? sanitizedBaseUrl
+  : `${sanitizedBaseUrl}/api`
 
 const client = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${API_BASE_URL}/`,
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true,
+  timeout: 15000,
 })
 
 client.interceptors.request.use((config) => {
+  if (config.url?.startsWith('/')) {
+    config.url = config.url.slice(1)
+  }
   const token = localStorage.getItem('fb_token')
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${token}`,
+    }
   }
   return config
 })
