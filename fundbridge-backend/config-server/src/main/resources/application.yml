@@ -1,3 +1,4 @@
+# Config Server is fixed infrastructure and does not register with Eureka.
 spring:
   application:
     name: config-server
@@ -10,10 +11,6 @@ spring:
           search-locations: classpath:/config
 server:
   port: 8888
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
 management:
   endpoints:
     web:
