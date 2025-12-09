@@ -43,7 +43,7 @@ public class SumsubClient {
     }
 
     public SumsubApplicantResponse createApplicant(SumsubApplicantPayload payload, String levelName) {
-        String path = UriComponentsBuilder.fromPath("/resources/applicants/-/one")
+        String path = UriComponentsBuilder.fromPath("/resources/applicants")
                 .queryParam("levelName", levelName)
                 .build()
                 .toUriString();
