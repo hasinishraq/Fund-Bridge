@@ -45,6 +45,12 @@ public class GlobalExceptionHandler {
                 .body(ApiError.withErrors("Validation failed", HttpStatus.BAD_REQUEST, request.getRequestURI(), errors));
     }
 
+    @ExceptionHandler(InvalidCaptchaException.class)
+    public ResponseEntity<ApiError> handleCaptcha(InvalidCaptchaException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiError.of(exception.getMessage(), HttpStatus.BAD_REQUEST, request.getRequestURI()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception exception, HttpServletRequest request) {
         log.error("Unexpected error processing {}", request.getRequestURI(), exception);

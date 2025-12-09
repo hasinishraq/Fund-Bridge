@@ -25,15 +25,18 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final RecaptchaService recaptchaService;
 
     public AuthService(UserService userService,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       RecaptchaService recaptchaService) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.recaptchaService = recaptchaService;
     }
 
     @Transactional
@@ -56,6 +59,7 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        recaptchaService.verify(request.captchaToken());
         String normalizedEmail = request.email().trim().toLowerCase(Locale.US);
         var authenticationToken = new UsernamePasswordAuthenticationToken(
                 normalizedEmail, request.password()
