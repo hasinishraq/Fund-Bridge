@@ -8,17 +8,61 @@ spring:
     config:
       fail-fast: false
     gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials,RETAIN_UNIQUE
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - http://localhost:5173
+              - http://localhost:4173
+              - http://localhost:5174
+              - http://localhost:5175
+            allowedOriginPatterns:
+              - http://localhost:*
+              - http://127.0.0.1:*
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            exposedHeaders:
+              - Authorization
+            allowCredentials: true
       routes:
         - id: auth-service
-          uri: http://localhost:8081
+          uri: lb://auth-service
           filters:
             - StripPrefix=1
           predicates:
             - Path=/api/auth/**
           # Frontend traffic must go through /api/auth/** on the gateway; direct calls stay internal only.
+        - id: loan-service
+          uri: lb://loan-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/loans/**
+        - id: wallet-service
+          uri: lb://wallet-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/wallet/**
+        - id: admin-service
+          uri: lb://admin-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/admin/**
       discovery:
         locator:
           enabled: true
+          lower-case-service-id: true
 eureka:
   client:
     service-url:
