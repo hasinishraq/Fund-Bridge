@@ -1,8 +1,5 @@
 package com.fundbridge.authservice.service;
 
-import com.fundbridge.authservice.client.kyc.CreateKycApplicantRequest;
-import com.fundbridge.authservice.client.kyc.KycApplicantResponse;
-import com.fundbridge.authservice.client.kyc.KycServiceClient;
 import com.fundbridge.authservice.dto.AuthResponse;
 import com.fundbridge.authservice.dto.LoginRequest;
 import com.fundbridge.authservice.dto.RegisterRequest;
@@ -10,16 +7,19 @@ import com.fundbridge.authservice.dto.UserResponse;
 import com.fundbridge.authservice.entity.UserAccount;
 import com.fundbridge.authservice.entity.UserRole;
 import com.fundbridge.authservice.exception.ResourceConflictException;
+import com.fundbridge.authservice.kyc.KycApplicationService;
+import com.fundbridge.authservice.kyc.dto.CreateApplicantRequest;
+import com.fundbridge.authservice.kyc.dto.KycApplicantResponse;
 import com.fundbridge.authservice.mapper.UserMapper;
 import com.fundbridge.authservice.security.JwtService;
 import com.fundbridge.authservice.security.UserPrincipal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.Locale;
@@ -34,20 +34,20 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final RecaptchaService recaptchaService;
-    private final KycServiceClient kycServiceClient;
+    private final KycApplicationService kycApplicationService;
 
     public AuthService(UserService userService,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
                        JwtService jwtService,
                        RecaptchaService recaptchaService,
-                       KycServiceClient kycServiceClient) {
+                       KycApplicationService kycApplicationService) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.recaptchaService = recaptchaService;
-        this.kycServiceClient = kycServiceClient;
+        this.kycApplicationService = kycApplicationService;
     }
 
     @Transactional
@@ -91,11 +91,11 @@ public class AuthService {
 
     private void startKycVerification(UserAccount userAccount) {
         try {
-            KycApplicantResponse applicantResponse = kycServiceClient.createApplicant(
-                    new CreateKycApplicantRequest(userAccount.getId(), userAccount.getName(), userAccount.getEmail())
+            KycApplicantResponse applicantResponse = kycApplicationService.createApplicant(
+                    new CreateApplicantRequest(userAccount.getId(), userAccount.getName(), userAccount.getEmail())
             );
             if (applicantResponse == null || applicantResponse.applicantId() == null) {
-                log.warn("KYC service returned an invalid response for user {}", userAccount.getEmail());
+                log.warn("KYC integration returned an invalid response for user {}", userAccount.getEmail());
                 return;
             }
             userAccount.setKycApplicantId(applicantResponse.applicantId());

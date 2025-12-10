@@ -1,0 +1,13 @@
+server:
+  port: 0
+spring:
+  application:
+    name: loan-management-service
+  cloud:
+    config:
+      fail-fast: true
+loan:
+  features:
+    credit-score: true
+    emi-schedule: true
+    funding-match: true

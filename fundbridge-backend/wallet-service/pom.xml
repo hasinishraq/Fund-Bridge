@@ -11,7 +11,7 @@
 
     <artifactId>wallet-service</artifactId>
     <name>wallet-service</name>
-    <description>wallet service module</description>
+    <description>Wallet and payment service module</description>
 
     <dependencies>
         <dependency>

@@ -1,31 +1,10 @@
 spring:
-  config:
-    # Config Server is fixed infra; import shared config over HTTP
-    import: optional:configserver:http://localhost:8888
   application:
     name: wallet-service
+  profiles:
+    active: dev
+  config:
+    import: optional:configserver:http://localhost:8899
   cloud:
     config:
       fail-fast: true
-server:
-  port: 0
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-storage:
-  provider: ${STORAGE_PROVIDER:local}
-  endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
-  bucket: ${STORAGE_BUCKET:wallet-data}
-  base-path: ${STORAGE_BASE_PATH:/data/wallet}
-  credentials:
-    access-key: ${STORAGE_ACCESS_KEY:changeme}
-    secret-key: ${STORAGE_SECRET_KEY:changeme}
-  paths:
-    statements: statements
-    receipts: receipts
