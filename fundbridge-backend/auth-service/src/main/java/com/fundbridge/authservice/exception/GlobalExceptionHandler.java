@@ -2,6 +2,7 @@ package com.fundbridge.authservice.exception;
 
 import com.fundbridge.authservice.dto.ApiError;
 import com.fundbridge.authservice.dto.ValidationError;
+import com.fundbridge.authservice.kyc.exception.KycProviderException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleKyc(KycIntegrationException exception, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(ApiError.of(exception.getMessage(), HttpStatus.SERVICE_UNAVAILABLE, request.getRequestURI()));
+    }
+
+    @ExceptionHandler(KycProviderException.class)
+    public ResponseEntity<ApiError> handleKycProvider(KycProviderException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiError.of(exception.getMessage(), HttpStatus.SERVICE_UNAVAILABLE, request.getRequestURI()));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiError.of(exception.getMessage(), HttpStatus.NOT_FOUND, request.getRequestURI()));
     }
 
     @ExceptionHandler(Exception.class)
