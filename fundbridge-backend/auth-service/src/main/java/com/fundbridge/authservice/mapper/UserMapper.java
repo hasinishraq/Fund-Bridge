@@ -19,7 +19,10 @@ public final class UserMapper {
                 user.getRole(),
                 user.getKycApplicantId(),
                 user.getKycStatus(),
-                user.getKycReviewUrl()
+                user.getKycReviewUrl(),
+                user.getKycLastSyncedAt(),
+                user.getCreatedAt(),
+                user.getUpdatedAt()
         );
     }
 }

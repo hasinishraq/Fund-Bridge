@@ -1,0 +1,60 @@
+server:
+  port: ${API_GATEWAY_PORT:8080}
+spring:
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials,RETAIN_UNIQUE
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: ${API_GATEWAY_ALLOWED_ORIGINS:https://app.fundbridge.com}
+            allowedOriginPatterns:
+              - https://*.fundbridge.com
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            exposedHeaders:
+              - Authorization
+            allowCredentials: true
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/auth/**,/api/users/**,/api/kyc/**
+        - id: admin-service
+          uri: lb://admin-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/admin/**
+        - id: loan-management-service
+          uri: lb://loan-management-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/loans/**,/api/credit/**,/api/funding/**,/api/repayments/**
+        - id: wallet-service
+          uri: lb://wallet-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/wallet/**,/api/payments/**
+        - id: notification-service
+          uri: lb://notification-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/notifications/**
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true

@@ -1,0 +1,49 @@
+server:
+  port: ${AUTH_SERVICE_PORT:8081}
+spring:
+  datasource:
+    url: ${AUTH_DB_URL:jdbc:mysql://auth-db:3306/fundbridge}
+    username: ${AUTH_DB_USERNAME:auth_user}
+    password: ${AUTH_DB_PASSWORD:change-me}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+security:
+  jwt:
+    secret: ${AUTH_JWT_SECRET}
+    expiration-seconds: ${AUTH_JWT_EXPIRATION_SECONDS:3600}
+app:
+  cors:
+    allowed-origins: ${AUTH_ALLOWED_ORIGINS:https://app.fundbridge.com}
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    allowed-headers:
+      - Authorization
+      - Content-Type
+    allowed-origin-patterns:
+      - https://*.fundbridge.com
+    exposed-headers:
+      - Authorization
+    allow-credentials: true
+  recaptcha:
+    enabled: ${AUTH_RECAPTCHA_ENABLED:true}
+    secret-key: ${AUTH_RECAPTCHA_SECRET_KEY}
+    verify-url: https://www.google.com/recaptcha/api/siteverify
+    minimum-score: ${AUTH_RECAPTCHA_MIN_SCORE:0.5}
+sumsub:
+  enabled: ${SUMSUB_ENABLED:true}
+  base-url: ${SUMSUB_BASE_URL:https://api.sumsub.com}
+  app-token: ${SUMSUB_APP_TOKEN:}
+  secret-key: ${SUMSUB_SECRET_KEY:}
+  level-name: ${SUMSUB_LEVEL_NAME:id-only}
+  websdk-ttl-seconds: ${SUMSUB_WEBSDK_TTL_SECONDS:900}
+  stub-review-url: ${SUMSUB_STUB_REVIEW_URL:https://kyc-demo.localhost/continue}

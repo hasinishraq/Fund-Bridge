@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: loan-management-service
+  profiles:
+    active: dev
+  config:
+    import: optional:configserver:http://localhost:8899
+  cloud:
+    config:
+      fail-fast: true

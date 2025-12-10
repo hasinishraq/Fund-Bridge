@@ -1,13 +1,17 @@
 spring:
-  config:
-    # Config Server is fixed infra; import shared config over HTTP
-    import: optional:configserver:http://localhost:8888
   application:
     name: auth-service
+  profiles:
+    active: dev
+  config:
+    import: optional:configserver:http://localhost:8899
+  cloud:
+    config:
+      fail-fast: true
   datasource:
-    url: jdbc:mysql://localhost:3306/fundbridge?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
-    username: root
-    password: ""
+    url: ${AUTH_DB_URL:jdbc:mysql://localhost:3306/fundbridge?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+    username: ${AUTH_DB_USERNAME:root}
+    password: ${AUTH_DB_PASSWORD:12345678}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -16,50 +20,20 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
-  cloud:
-    config:
-      fail-fast: true
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    fetch-registry: true
-    register-with-eureka: true
-server:
-  port: 8081
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+
+# Local fallback values so the service can still boot if Config Server is unavailable.
 security:
   jwt:
     secret: ${AUTH_JWT_SECRET:your_256_bit_jwt_secret_key_here_minimum_32_characters}
     expiration-seconds: ${AUTH_JWT_EXPIRATION_SECONDS:3600}
-app:
-  cors:
-    allowed-origins:
-      - http://localhost:5173
-      - http://localhost:4173
-      - http://localhost:5174
-      - http://localhost:5175
-    allowed-methods:
-      - GET
-      - POST
-      - PUT
-      - DELETE
-      - OPTIONS
-    allowed-headers:
-      - Authorization
-      - Content-Type
-    allowed-origin-patterns:
-      - http://localhost:*
-      - http://127.0.0.1:*
-    exposed-headers:
-      - Authorization
-    allow-credentials: true
-  recaptcha:
-    enabled: ${AUTH_RECAPTCHA_ENABLED:true}
-    secret-key: ${AUTH_RECAPTCHA_SECRET_KEY:your_recaptcha_secret_key_here}
-    verify-url: https://www.google.com/recaptcha/api/siteverify
-    minimum-score: ${AUTH_RECAPTCHA_MIN_SCORE:0.5}
+server:
+  port: 8081
+sumsub:
+  enabled: ${SUMSUB_ENABLED:true}
+  stub-review-url: ${SUMSUB_STUB_REVIEW_URL:https://kyc-demo.localhost/continue}
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
