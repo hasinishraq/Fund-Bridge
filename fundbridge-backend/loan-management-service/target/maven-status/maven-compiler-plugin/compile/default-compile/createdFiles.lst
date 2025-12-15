@@ -1,0 +1,14 @@
+com\fundbridge\loanmanagementservice\controller\LoanController.class
+com\fundbridge\loanmanagementservice\service\LoanApplicationService.class
+com\fundbridge\loanmanagementservice\dto\EmiScheduleRequest.class
+com\fundbridge\loanmanagementservice\dto\FundingMatchResponse.class
+com\fundbridge\loanmanagementservice\LoanManagementServiceApplication.class
+com\fundbridge\loanmanagementservice\dto\FundingMatch.class
+com\fundbridge\loanmanagementservice\service\FundingMatchService.class
+com\fundbridge\loanmanagementservice\dto\CreditScoreResponse.class
+com\fundbridge\loanmanagementservice\dto\EmiScheduleItem.class
+com\fundbridge\loanmanagementservice\controller\CreditScoreController.class
+com\fundbridge\loanmanagementservice\service\EmiCalculatorService.class
+com\fundbridge\loanmanagementservice\service\CreditScoreService.class
+com\fundbridge\loanmanagementservice\dto\LoanApplicationResponse.class
+com\fundbridge\loanmanagementservice\dto\LoanApplicationRequest.class

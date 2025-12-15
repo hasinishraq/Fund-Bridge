@@ -54,6 +54,10 @@ public class KycApplicationService {
                         applicantResponse.id(), request.userId(), linkException);
             }
 
+            if (!StringUtils.hasText(reviewUrl)) {
+                reviewUrl = properties.getStubReviewUrl();
+            }
+
             return new KycApplicantResponse(applicantResponse.id(), mapStatus(applicantResponse), reviewUrl);
         } catch (Exception exception) {
             log.error("Failed to create Sumsub applicant for user {}. Returning stub response.", request.userId(), exception);

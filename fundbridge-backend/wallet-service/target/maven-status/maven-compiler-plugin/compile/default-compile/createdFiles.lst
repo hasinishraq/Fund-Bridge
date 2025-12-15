@@ -1,0 +1,4 @@
+com\fundbridge\walletservice\WalletServiceApplication.class
+com\fundbridge\walletservice\config\StorageProperties$Credentials.class
+com\fundbridge\walletservice\config\StorageProperties.class
+com\fundbridge\walletservice\config\StorageProperties$Paths.class

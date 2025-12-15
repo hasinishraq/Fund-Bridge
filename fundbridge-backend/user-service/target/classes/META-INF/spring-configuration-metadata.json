@@ -1,0 +1,59 @@
+{
+  "groups": [
+    {
+      "name": "app.cors",
+      "type": "com.fundbridge.userservice.config.CorsProperties",
+      "sourceType": "com.fundbridge.userservice.config.CorsProperties"
+    },
+    {
+      "name": "security.jwt",
+      "type": "com.fundbridge.userservice.security.JwtProperties",
+      "sourceType": "com.fundbridge.userservice.security.JwtProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "app.cors.allow-credentials",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.fundbridge.userservice.config.CorsProperties",
+      "defaultValue": false
+    },
+    {
+      "name": "app.cors.allowed-headers",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.fundbridge.userservice.config.CorsProperties"
+    },
+    {
+      "name": "app.cors.allowed-methods",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.fundbridge.userservice.config.CorsProperties"
+    },
+    {
+      "name": "app.cors.allowed-origin-patterns",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.fundbridge.userservice.config.CorsProperties"
+    },
+    {
+      "name": "app.cors.allowed-origins",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.fundbridge.userservice.config.CorsProperties"
+    },
+    {
+      "name": "app.cors.exposed-headers",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.fundbridge.userservice.config.CorsProperties"
+    },
+    {
+      "name": "security.jwt.expiration-seconds",
+      "type": "java.lang.Long",
+      "sourceType": "com.fundbridge.userservice.security.JwtProperties",
+      "defaultValue": 0
+    },
+    {
+      "name": "security.jwt.secret",
+      "type": "java.lang.String",
+      "sourceType": "com.fundbridge.userservice.security.JwtProperties"
+    }
+  ],
+  "hints": []
+}
