@@ -38,6 +38,9 @@ public class UserAccount {
     @Column(name = "kyc_last_synced_at")
     private Instant kycLastSyncedAt;
 
+    @Embedded
+    private UserSettings settings = new UserSettings();
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -49,11 +52,17 @@ public class UserAccount {
         Instant now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;
+        if (settings == null) {
+            settings = new UserSettings();
+        }
     }
 
     @PreUpdate
     void onUpdate() {
         this.updatedAt = Instant.now();
+        if (settings == null) {
+            settings = new UserSettings();
+        }
     }
 
     public Long getId() {
@@ -126,6 +135,14 @@ public class UserAccount {
 
     public void setKycLastSyncedAt(Instant kycLastSyncedAt) {
         this.kycLastSyncedAt = kycLastSyncedAt;
+    }
+
+    public UserSettings getSettings() {
+        return settings;
+    }
+
+    public void setSettings(UserSettings settings) {
+        this.settings = settings;
     }
 
     public Instant getCreatedAt() {

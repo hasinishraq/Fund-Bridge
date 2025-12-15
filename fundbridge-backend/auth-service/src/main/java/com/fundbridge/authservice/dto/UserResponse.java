@@ -15,6 +15,7 @@ public record UserResponse(
         String kycReviewUrl,
         Instant kycLastSyncedAt,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        UserSettingsResponse settings
 ) {
 }

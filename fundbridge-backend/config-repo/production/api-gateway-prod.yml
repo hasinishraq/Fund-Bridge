@@ -29,7 +29,13 @@ spring:
           filters:
             - StripPrefix=1
           predicates:
-            - Path=/api/auth/**,/api/users/**,/api/kyc/**
+            - Path=/api/auth/**,/api/kyc/**
+        - id: user-service
+          uri: lb://user-service
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/users/**
         - id: admin-service
           uri: lb://admin-service
           filters:
