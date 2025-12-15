@@ -1,6 +1,6 @@
-package com.fundbridge.authservice.dto;
+package com.fundbridge.userservice.dto;
 
-import com.fundbridge.authservice.entity.UserRole;
+import com.fundbridge.userservice.entity.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

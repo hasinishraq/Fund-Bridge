@@ -6,6 +6,7 @@ import com.fundbridge.authservice.dto.RegisterRequest;
 import com.fundbridge.authservice.dto.UserResponse;
 import com.fundbridge.authservice.entity.UserAccount;
 import com.fundbridge.authservice.entity.UserRole;
+import com.fundbridge.authservice.entity.UserSettings;
 import com.fundbridge.authservice.exception.ResourceConflictException;
 import com.fundbridge.authservice.kyc.KycApplicationService;
 import com.fundbridge.authservice.kyc.dto.CreateApplicantRequest;
@@ -62,6 +63,7 @@ public class AuthService {
         userAccount.setEmail(normalizedEmail);
         userAccount.setPassword(passwordEncoder.encode(request.password()));
         userAccount.setRole(UserRole.BORROWER);
+        userAccount.setSettings(new UserSettings());
 
         UserAccount saved = userService.save(userAccount);
         startKycVerification(saved);

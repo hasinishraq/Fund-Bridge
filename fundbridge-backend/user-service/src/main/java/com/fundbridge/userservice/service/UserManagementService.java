@@ -1,16 +1,17 @@
-package com.fundbridge.authservice.service;
+package com.fundbridge.userservice.service;
 
-import com.fundbridge.authservice.dto.CreateUserRequest;
-import com.fundbridge.authservice.dto.KycUpdateRequest;
-import com.fundbridge.authservice.dto.UpdateUserRequest;
-import com.fundbridge.authservice.dto.UserResponse;
-import com.fundbridge.authservice.entity.KycStatus;
-import com.fundbridge.authservice.entity.UserAccount;
-import com.fundbridge.authservice.entity.UserRole;
-import com.fundbridge.authservice.exception.ResourceConflictException;
-import com.fundbridge.authservice.exception.ResourceNotFoundException;
-import com.fundbridge.authservice.mapper.UserMapper;
-import com.fundbridge.authservice.repository.UserAccountRepository;
+import com.fundbridge.userservice.dto.CreateUserRequest;
+import com.fundbridge.userservice.dto.KycUpdateRequest;
+import com.fundbridge.userservice.dto.UpdateUserRequest;
+import com.fundbridge.userservice.dto.UserResponse;
+import com.fundbridge.userservice.entity.KycStatus;
+import com.fundbridge.userservice.entity.UserAccount;
+import com.fundbridge.userservice.entity.UserRole;
+import com.fundbridge.userservice.entity.UserSettings;
+import com.fundbridge.userservice.exception.ResourceConflictException;
+import com.fundbridge.userservice.exception.ResourceNotFoundException;
+import com.fundbridge.userservice.mapper.UserMapper;
+import com.fundbridge.userservice.repository.UserAccountRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,6 +46,9 @@ public class UserManagementService {
         user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRole(request.role() == null ? UserRole.BORROWER : request.role());
+        if (user.getSettings() == null) {
+            user.setSettings(new UserSettings());
+        }
 
         UserAccount saved = userAccountRepository.save(user);
         return UserMapper.toResponse(saved);

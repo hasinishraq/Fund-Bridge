@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/kyc")
-@PreAuthorize("hasAnyRole('ADMIN','BORROWER')")
+@PreAuthorize("hasAnyRole('ADMIN','BORROWER','LENDER')")
 public class KycController {
 
     private final KycApplicationService kycApplicationService;

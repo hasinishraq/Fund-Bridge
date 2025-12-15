@@ -26,10 +26,21 @@ security:
   jwt:
     secret: ${AUTH_JWT_SECRET:your_256_bit_jwt_secret_key_here_minimum_32_characters}
     expiration-seconds: ${AUTH_JWT_EXPIRATION_SECONDS:3600}
+app:
+  recaptcha:
+    enabled: ${AUTH_RECAPTCHA_ENABLED:true}
+    secret-key: ${AUTH_RECAPTCHA_SECRET_KEY:your_recaptcha_secret_key_here}
+    verify-url: ${AUTH_RECAPTCHA_VERIFY_URL:https://www.google.com/recaptcha/api/siteverify}
+    minimum-score: ${AUTH_RECAPTCHA_MIN_SCORE:0.5}
 server:
-  port: 8081
+  port: ${AUTH_SERVICE_PORT:8081}
 sumsub:
   enabled: ${SUMSUB_ENABLED:true}
+  base-url: ${SUMSUB_BASE_URL:https://test-api.sumsub.com}
+  app-token: ${SUMSUB_APP_TOKEN:}
+  secret-key: ${SUMSUB_SECRET_KEY:}
+  level-name: ${SUMSUB_LEVEL_NAME:id-only}
+  websdk-ttl-seconds: ${SUMSUB_WEBSDK_TTL_SECONDS:900}
   stub-review-url: ${SUMSUB_STUB_REVIEW_URL:https://kyc-demo.localhost/continue}
 eureka:
   client:

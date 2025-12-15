@@ -1,6 +1,6 @@
-package com.fundbridge.authservice.dto;
+package com.fundbridge.userservice.dto;
 
-import com.fundbridge.authservice.entity.KycStatus;
+import com.fundbridge.userservice.entity.KycStatus;
 import jakarta.validation.constraints.Size;
 
 public record KycUpdateRequest(

@@ -41,7 +41,13 @@ spring:
           filters:
             - StripPrefix=1
           predicates:
-            - Path=/api/auth/**,/api/users/**,/api/kyc/**
+            - Path=/api/auth/**,/api/kyc/**
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8086}
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/api/users/**
         - id: admin-service
           uri: lb://admin-service
           filters:
@@ -72,7 +78,7 @@ spring:
           lower-case-service-id: true
 
 server:
-  port: 8080
+  port: ${API_GATEWAY_PORT:8080}
 
 eureka:
   client:

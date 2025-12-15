@@ -1,12 +1,12 @@
-package com.fundbridge.authservice.controller;
+package com.fundbridge.userservice.controller;
 
-import com.fundbridge.authservice.dto.CreateUserRequest;
-import com.fundbridge.authservice.dto.KycUpdateRequest;
-import com.fundbridge.authservice.dto.UpdateUserRequest;
-import com.fundbridge.authservice.dto.UserResponse;
-import com.fundbridge.authservice.entity.KycStatus;
-import com.fundbridge.authservice.entity.UserRole;
-import com.fundbridge.authservice.service.UserManagementService;
+import com.fundbridge.userservice.dto.CreateUserRequest;
+import com.fundbridge.userservice.dto.KycUpdateRequest;
+import com.fundbridge.userservice.dto.UpdateUserRequest;
+import com.fundbridge.userservice.dto.UserResponse;
+import com.fundbridge.userservice.entity.KycStatus;
+import com.fundbridge.userservice.entity.UserRole;
+import com.fundbridge.userservice.service.UserManagementService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

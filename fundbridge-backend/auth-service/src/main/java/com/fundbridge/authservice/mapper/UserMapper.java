@@ -1,7 +1,9 @@
 package com.fundbridge.authservice.mapper;
 
 import com.fundbridge.authservice.dto.UserResponse;
+import com.fundbridge.authservice.dto.UserSettingsResponse;
 import com.fundbridge.authservice.entity.UserAccount;
+import com.fundbridge.authservice.entity.UserSettings;
 
 public final class UserMapper {
 
@@ -12,6 +14,7 @@ public final class UserMapper {
         if (user == null) {
             return null;
         }
+        UserSettings settings = user.getSettings();
         return new UserResponse(
                 user.getId(),
                 user.getName(),
@@ -22,7 +25,12 @@ public final class UserMapper {
                 user.getKycReviewUrl(),
                 user.getKycLastSyncedAt(),
                 user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getUpdatedAt(),
+                settings == null ? null : new UserSettingsResponse(
+                        settings.getLocale(),
+                        settings.isEmailNotifications(),
+                        settings.isSmsNotifications()
+                )
         );
     }
 }
