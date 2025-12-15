@@ -50,7 +50,7 @@ const RegisterForm = ({ onSubmit, loading }) => {
       })
       const reviewUrl = result?.user?.kycReviewUrl
       if (reviewUrl) {
-        window.open(reviewUrl, '_blank', 'noopener,noreferrer')
+        window.location.assign(reviewUrl)
       }
     } catch (error) {
       const serverErrors = extractFieldErrors(error)
