@@ -1,7 +1,8 @@
-﻿import client from './client'
+import client from './client'
 
-export const fetchLoans = async () => {
-  const { data } = await client.get('/loans')
+export const fetchLoans = async ({ borrowerId } = {}) => {
+  const query = borrowerId ? { params: { borrowerId } } : undefined
+  const { data } = await client.get('/loans', query)
   return data
 }
 

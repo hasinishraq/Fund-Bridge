@@ -11,17 +11,21 @@ const Sidebar = () => {
 
   return (
     <nav className="sidebar">
-      {links.map((link) => (
-        <NavLink
-          key={link.to}
-          to={link.to}
-          className={({ isActive }) =>
-            `sidebar-link ${isActive ? 'active' : ''}`.trim()
-          }
-        >
-          {link.label}
-        </NavLink>
-      ))}
+      <div className="sidebar-heading">Workspace</div>
+      <div className="sidebar-links">
+        {links.map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? 'active' : ''}`.trim()
+            }
+          >
+            <span className="sidebar-dot" aria-hidden="true" />
+            {link.label}
+          </NavLink>
+        ))}
+      </div>
     </nav>
   )
 }

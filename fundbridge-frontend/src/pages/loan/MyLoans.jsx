@@ -1,10 +1,12 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchLoans } from '../../api/loanApi'
 import { CURRENCY_FORMATTER, LOAN_STATUS } from '../../utils/constants'
 import Loader from '../../components/common/Loader'
+import { useAuth } from '../../context/AuthContext'
 
 const MyLoans = () => {
+  const { user } = useAuth()
   const [loans, setLoans] = useState([])
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [loading, setLoading] = useState(true)
@@ -12,8 +14,13 @@ const MyLoans = () => {
 
   useEffect(() => {
     const load = async () => {
+      if (!user?.id) {
+        setLoading(false)
+        setError('You must be logged in to view your loans.')
+        return
+      }
       try {
-        const response = await fetchLoans()
+        const response = await fetchLoans({ borrowerId: user.id })
         setLoans(response || [])
       } catch (err) {
         console.error(err)
@@ -23,7 +30,13 @@ const MyLoans = () => {
       }
     }
     load()
-  }, [])
+  }, [user])
+
+  const filterOptions = useMemo(() => {
+    const dynamicStatuses = loans.map((loan) => loan.status).filter(Boolean)
+    const uniqueStatuses = Array.from(new Set([...LOAN_STATUS, ...dynamicStatuses]))
+    return ['ALL', ...uniqueStatuses]
+  }, [loans])
 
   const filteredLoans =
     statusFilter === 'ALL'
@@ -62,8 +75,7 @@ const MyLoans = () => {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value="ALL">All statuses</option>
-            {LOAN_STATUS.map((status) => (
+            {filterOptions.map((status) => (
               <option key={status} value={status}>
                 {status}
               </option>

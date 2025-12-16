@@ -41,8 +41,8 @@ export const validateRegister = ({ name, email, password, confirmPassword }) => 
 
 export const validateLoanPayload = ({ amount, tenureMonths, purpose }) => {
   const errors = {}
-  if (!isAmountValid(Number(amount))) {
-    errors.amount = 'Amount must be a positive number'
+  if (!isAmountValid(Number(amount)) || Number(amount) < 1000) {
+    errors.amount = 'Amount must be at least 1000'
   }
   if (!Number(tenureMonths) || Number(tenureMonths) <= 0) {
     errors.tenureMonths = 'Tenure should be greater than 0 months'
