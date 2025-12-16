@@ -1,5 +1,6 @@
 server:
   port: ${API_GATEWAY_PORT:8080}
+
 spring:
   cloud:
     gateway:
@@ -8,9 +9,8 @@ spring:
       globalcors:
         corsConfigurations:
           '[/**]':
-            allowedOrigins: ${API_GATEWAY_ALLOWED_ORIGINS:https://app.fundbridge.com}
-            allowedOriginPatterns:
-              - https://*.fundbridge.com
+            allowedOrigins: ${API_GATEWAY_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:4173,http://localhost:5174,http://localhost:5175}
+            allowedOriginPatterns: ${API_GATEWAY_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
             allowedMethods:
               - GET
               - POST
@@ -25,37 +25,37 @@ spring:
             allowCredentials: true
       routes:
         - id: auth-service
-          uri: lb://auth-service
+          uri: ${AUTH_SERVICE_URI:lb://auth-service}
           filters:
             - StripPrefix=1
           predicates:
             - Path=/api/auth/**,/api/kyc/**
         - id: user-service
-          uri: lb://user-service
+          uri: ${USER_SERVICE_URI:lb://user-service}
           filters:
             - StripPrefix=1
           predicates:
             - Path=/api/users/**
         - id: admin-service
-          uri: lb://admin-service
+          uri: ${ADMIN_SERVICE_URI:lb://admin-service}
           filters:
             - StripPrefix=1
           predicates:
             - Path=/api/admin/**
         - id: loan-management-service
-          uri: lb://loan-management-service
+          uri: ${LOAN_SERVICE_URI:lb://loan-management-service}
           filters:
             - StripPrefix=1
           predicates:
             - Path=/api/loans/**,/api/credit/**,/api/funding/**,/api/repayments/**
         - id: wallet-service
-          uri: lb://wallet-service
+          uri: ${WALLET_SERVICE_URI:lb://wallet-service}
           filters:
             - StripPrefix=1
           predicates:
             - Path=/api/wallet/**,/api/payments/**
         - id: notification-service
-          uri: lb://notification-service
+          uri: ${NOTIFICATION_SERVICE_URI:lb://notification-service}
           filters:
             - StripPrefix=1
           predicates:

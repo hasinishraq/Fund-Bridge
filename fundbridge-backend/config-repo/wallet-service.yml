@@ -4,8 +4,8 @@ storage:
   bucket: ${STORAGE_BUCKET:wallet-data}
   base-path: ${STORAGE_BASE_PATH:/data/wallet}
   credentials:
-    access-key: ${STORAGE_ACCESS_KEY:changeme}
-    secret-key: ${STORAGE_SECRET_KEY:changeme}
+    access-key: ${STORAGE_ACCESS_KEY:}
+    secret-key: ${STORAGE_SECRET_KEY:}
   paths:
-    statements: statements
-    receipts: receipts
+    statements: ${STORAGE_STATEMENTS_PATH:statements}
+    receipts: ${STORAGE_RECEIPTS_PATH:receipts}
