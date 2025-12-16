@@ -1,17 +1,19 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { fetchWalletBalance, topUpWallet } from '../../api/walletApi'
 import Button from '../../components/common/Button'
 import { CURRENCY_FORMATTER } from '../../utils/constants'
+import { useAuth } from '../../context/AuthContext'
 
 const WalletBalance = () => {
   const [wallet, setWallet] = useState(null)
   const [amount, setAmount] = useState('')
   const [status, setStatus] = useState('LOADING')
   const [message, setMessage] = useState('')
+  const { user } = useAuth()
 
   const loadWallet = async () => {
     try {
-      const response = await fetchWalletBalance()
+      const response = await fetchWalletBalance({ userId: user?.id })
       setWallet(response)
       setStatus('SUCCESS')
     } catch (error) {
@@ -22,6 +24,8 @@ const WalletBalance = () => {
 
   useEffect(() => {
     loadWallet()
+    // We intentionally skip user as a dependency to avoid refetch loops while the profile bootstraps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleTopUp = async (event) => {
@@ -31,8 +35,13 @@ const WalletBalance = () => {
       return
     }
     setStatus('LOADING')
+    setMessage('')
     try {
-      await topUpWallet({ amount: Number(amount) })
+      await topUpWallet({
+        amount: Number(amount),
+        userId: user?.id,
+        currency: wallet?.currency,
+      })
       setAmount('')
       setMessage('Wallet funded successfully')
       await loadWallet()
@@ -62,8 +71,14 @@ const WalletBalance = () => {
   return (
     <section className="card">
       <h2>Wallet</h2>
-      <p className="muted">Current balance</p>
+      <p className="muted">
+        {wallet?.currency || '---'} • Status: <strong>{wallet?.status || 'UNKNOWN'}</strong>
+      </p>
       <h1>{CURRENCY_FORMATTER.format(wallet?.balance ?? 0)}</h1>
+      <p className="muted">
+        Held: {CURRENCY_FORMATTER.format(wallet?.held ?? 0)} • Updated:{' '}
+        {wallet?.updatedAt ? new Date(wallet.updatedAt).toLocaleString() : '—'}
+      </p>
       <form className="wallet-topup" onSubmit={handleTopUp}>
         <label htmlFor="topupAmount" className="visually-hidden">
           Top up amount
