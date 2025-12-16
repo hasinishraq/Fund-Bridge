@@ -1,9 +1,10 @@
-## FundBridge Config Repo (Native)
+## FundBridge Config Repo (Native, Flat Layout)
 
-This folder acts as the Spring Cloud Config repository when the `config-server` module runs with the `native` profile. The server watches the `dev/` and `production/` subdirectories and serves property sources to the rest of the microservices.
+This folder is the Spring Cloud Config repository when the `config-server` runs with the `native` profile. It uses a single flat layout:
 
-- `dev/` mirrors the local developer setup (localhost Eureka, MySQL, permissive CORS, etc.).
-- `production/` contains the same keys but expects secrets/URLs to be supplied via environment variables (see the `${...}` placeholders).
-- Each subdirectory stores `application-<profile>.yml` for shared defaults and `<service-name>-<profile>.yml` for service overrides.
+- `application.yml` — shared defaults (Eureka, management, etc.).
+- `<service-name>.yml` — one file per service (api-gateway, auth-service, user-service, loan-management-service, wallet-service).
 
-To point the Config Server at a different location (or custom folders), set `CONFIG_REPO_LOCATIONS` before launching it. The default resolves to `file:../config-repo/dev,file:../config-repo/production`.
+Secrets and environment-specific values use `${ENV_VAR[:default]}` placeholders. Provide real values via environment variables when running services.
+
+To point the Config Server at a different location, set `CONFIG_REPO_LOCATIONS` before launching it. By default it tries `file:../config-repo`, `file:./config-repo`, and `file:./fundbridge-backend/config-repo`.

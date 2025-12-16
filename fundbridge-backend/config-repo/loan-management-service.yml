@@ -1,0 +1,8 @@
+server:
+  port: ${LOAN_SERVICE_PORT:0}
+
+loan:
+  features:
+    credit-score: true
+    emi-schedule: true
+    funding-match: true
