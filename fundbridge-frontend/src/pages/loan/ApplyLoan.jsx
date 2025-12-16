@@ -1,47 +1,53 @@
-﻿import { useState } from 'react';
-import { applyForLoan } from '../../api/loanApi';
-import Button from '../../components/common/Button';
-import { validateLoanPayload } from '../../utils/validators';
+import { useState } from 'react'
+import { applyForLoan } from '../../api/loanApi'
+import Button from '../../components/common/Button'
+import { useAuth } from '../../context/AuthContext'
+import { validateLoanPayload } from '../../utils/validators'
 
 const initialState = {
   amount: '',
   tenureMonths: '',
   purpose: '',
-};
+}
 
 const ApplyLoan = () => {
-  const [values, setValues] = useState(initialState);
-  const [errors, setErrors] = useState({});
-  const [status, setStatus] = useState('IDLE');
-  const [message, setMessage] = useState('');
+  const { user } = useAuth()
+  const [values, setValues] = useState(initialState)
+  const [errors, setErrors] = useState({})
+  const [status, setStatus] = useState('IDLE')
+  const [message, setMessage] = useState('')
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
-    setValues((prev) => ({ ...prev, [name]: value }));
-  };
+    const { name, value } = event.target
+    setValues((prev) => ({ ...prev, [name]: value }))
+  }
 
   const handleSubmit = async (event) => {
-    event.preventDefault();
-    const validationErrors = validateLoanPayload(values);
-    setErrors(validationErrors);
+    event.preventDefault()
+    const validationErrors = validateLoanPayload(values)
+    setErrors(validationErrors)
     if (Object.keys(validationErrors).length) {
-      return;
+      return
     }
-    setStatus('LOADING');
+    setStatus('LOADING')
     try {
-      await applyForLoan({
+      const payload = {
         amount: Number(values.amount),
         tenureMonths: Number(values.tenureMonths),
         purpose: values.purpose,
-      });
-      setMessage('Loan application submitted successfully');
-      setValues(initialState);
-      setStatus('SUCCESS');
+        borrowerId: user?.id,
+      }
+      const response = await applyForLoan(payload)
+      setMessage(
+        `Loan request submitted (id: ${response?.id ?? 'pending'}) with status ${response?.status ?? 'PENDING'}`,
+      )
+      setValues(initialState)
+      setStatus('SUCCESS')
     } catch (error) {
-      setMessage(error?.response?.data?.message || 'Unable to submit');
-      setStatus('ERROR');
+      setMessage(error?.response?.data?.message || 'Unable to submit')
+      setStatus('ERROR')
     }
-  };
+  }
 
   return (
     <section className="card">
@@ -58,7 +64,7 @@ const ApplyLoan = () => {
             id="amount"
             name="amount"
             type="number"
-            min="1"
+            min="1000"
             value={values.amount}
             onChange={handleChange}
             placeholder="1000"
@@ -104,7 +110,7 @@ const ApplyLoan = () => {
         </div>
       </form>
     </section>
-  );
-};
+  )
+}
 
-export default ApplyLoan;
+export default ApplyLoan

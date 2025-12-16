@@ -1,9 +1,18 @@
-﻿export const ROLE = {
+export const ROLE = {
   BORROWER: 'BORROWER',
   ADMIN: 'ADMIN',
 }
 
-export const LOAN_STATUS = ['PENDING', 'APPROVED', 'REJECTED', 'DISBURSED']
+export const LOAN_STATUS = [
+  'PENDING',
+  'APPROVED',
+  'FUNDING',
+  'DISBURSED',
+  'ACTIVE',
+  'REJECTED',
+  'DEFAULTED',
+  'CLOSED',
+]
 
 export const API_STATUS = {
   idle: 'IDLE',
