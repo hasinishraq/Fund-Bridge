@@ -12,8 +12,8 @@
         <module name="loan-management-service" />
         <module name="api-gateway" />
         <module name="user-service" />
-        <module name="notification-service" />
         <module name="admin-service" />
+        <module name="notification-service" />
         <module name="wallet-service" />
       </profile>
     </annotationProcessing>

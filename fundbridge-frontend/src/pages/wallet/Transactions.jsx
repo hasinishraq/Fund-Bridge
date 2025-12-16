@@ -1,16 +1,18 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { fetchTransactions } from '../../api/walletApi'
 import { CURRENCY_FORMATTER } from '../../utils/constants'
 import Loader from '../../components/common/Loader'
+import { useAuth } from '../../context/AuthContext'
 
 const Transactions = () => {
   const [transactions, setTransactions] = useState([])
   const [status, setStatus] = useState('LOADING')
+  const { user } = useAuth()
 
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await fetchTransactions()
+        const response = await fetchTransactions({ userId: user?.id })
         setTransactions(response || [])
         setStatus('SUCCESS')
       } catch (error) {
@@ -19,6 +21,7 @@ const Transactions = () => {
       }
     }
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (status === 'LOADING') {
@@ -46,7 +49,9 @@ const Transactions = () => {
             <tr>
               <th>ID</th>
               <th>Type</th>
+              <th>Status</th>
               <th>Amount</th>
+              <th>Currency</th>
               <th>Date</th>
             </tr>
           </thead>
@@ -55,11 +60,11 @@ const Transactions = () => {
               <tr key={tx.id}>
                 <td>{tx.id}</td>
                 <td>{tx.type}</td>
+                <td>{tx.status}</td>
                 <td>{CURRENCY_FORMATTER.format(tx.amount)}</td>
+                <td>{tx.currency}</td>
                 <td>
-                  {tx.createdAt
-                    ? new Date(tx.createdAt).toLocaleString()
-                    : 'N/A'}
+                  {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}
                 </td>
               </tr>
             ))}
