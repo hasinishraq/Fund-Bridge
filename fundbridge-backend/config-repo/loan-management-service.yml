@@ -1,7 +1,26 @@
 server:
-  port: ${LOAN_SERVICE_PORT:0}
+  port: ${LOAN_SERVICE_PORT:8092}
+
+spring:
+  datasource:
+    url: ${LOAN_DB_URL:jdbc:mysql://localhost:3306/loan_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+    username: ${LOAN_DB_USERNAME:}
+    password: ${LOAN_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${LOAN_JPA_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
 
 loan:
+  default-currency: ${LOAN_DEFAULT_CURRENCY:BDT}
+  default-interest-rate-percent: ${LOAN_DEFAULT_RATE:12.0}
+  demo:
+    borrower-id: ${LOAN_DEMO_BORROWER_ID:1}
+    lender-id: ${LOAN_DEMO_LENDER_ID:2}
   features:
     credit-score: true
     emi-schedule: true

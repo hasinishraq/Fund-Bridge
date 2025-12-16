@@ -41,25 +41,31 @@ const Dashboard = () => {
   const [quickLoanStatus, setQuickLoanStatus] = useState(API_STATUS.idle)
   const [quickLoanMessage, setQuickLoanMessage] = useState('')
 
-  const loadDashboard = useCallback(async ({ silent = false } = {}) => {
-    if (!silent) {
-      setStatus(API_STATUS.loading)
-      setError('')
-    }
-    try {
-      const [loans, wallet] = await Promise.all([fetchLoans(), fetchWalletBalance()])
-      setState({ loans, wallet })
+  const loadDashboard = useCallback(
+    async ({ silent = false } = {}) => {
       if (!silent) {
-        setStatus(API_STATUS.success)
+        setStatus(API_STATUS.loading)
+        setError('')
       }
-    } catch (err) {
-      console.error(err)
-      if (!silent) {
-        setError('Unable to load dashboard')
-        setStatus(API_STATUS.error)
+      try {
+        const [loans, wallet] = await Promise.all([
+          fetchLoans(),
+          fetchWalletBalance({ userId: user?.id }),
+        ])
+        setState({ loans, wallet })
+        if (!silent) {
+          setStatus(API_STATUS.success)
+        }
+      } catch (err) {
+        console.error(err)
+        if (!silent) {
+          setError('Unable to load dashboard')
+          setStatus(API_STATUS.error)
+        }
       }
-    }
-  }, [])
+    },
+    [user?.id],
+  )
 
   useEffect(() => {
     loadDashboard()
