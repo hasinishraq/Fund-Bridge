@@ -3,11 +3,14 @@
   Route,
   Routes,
   Outlet,
+  Navigate,
 } from 'react-router-dom'
 import './App.css'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
+import DashboardRouter from './pages/dashboard/DashboardRouter'
 import Dashboard from './pages/dashboard/Dashboard'
+import LenderDashboard from './pages/dashboard/LenderDashboard'
 import ApplyLoan from './pages/loan/ApplyLoan'
 import MyLoans from './pages/loan/MyLoans'
 import LoanDetails from './pages/loan/LoanDetails'
@@ -42,7 +45,10 @@ function App() {
 
         <Route element={<PrivateRoute />}>
           <Route element={<DashboardShell />}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<DashboardRouter />} />
+            <Route path="/dashboard/borrower" element={<Dashboard />} />
+            <Route path="/dashboard/lender" element={<LenderDashboard />} />
+            <Route path="/lender/dashboard" element={<Navigate to="/dashboard/lender" replace />} />
             <Route path="/loans/apply" element={<ApplyLoan />} />
             <Route path="/loans" element={<MyLoans />} />
             <Route path="/loans/:id" element={<LoanDetails />} />

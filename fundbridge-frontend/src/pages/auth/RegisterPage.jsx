@@ -1,12 +1,14 @@
 ﻿import { Link, Navigate } from 'react-router-dom';
 import RegisterForm from '../../components/auth/RegisterForm';
 import { useAuth } from '../../context/AuthContext';
+import { getRoleHomePath } from '../../utils/constants';
 
 const RegisterPage = () => {
-  const { register, isAuthenticated, loading } = useAuth();
+  const { register, isAuthenticated, loading, user } = useAuth();
+  const destination = getRoleHomePath(user?.role);
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={destination} replace />;
   }
 
   return (

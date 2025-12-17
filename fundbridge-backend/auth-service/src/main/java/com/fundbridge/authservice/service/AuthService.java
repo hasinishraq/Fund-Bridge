@@ -62,7 +62,11 @@ public class AuthService {
         userAccount.setName(request.name().trim());
         userAccount.setEmail(normalizedEmail);
         userAccount.setPassword(passwordEncoder.encode(request.password()));
-        userAccount.setRole(UserRole.BORROWER);
+        UserRole requestedRole = request.role();
+        if (requestedRole == null || requestedRole == UserRole.ADMIN) {
+            requestedRole = UserRole.BORROWER;
+        }
+        userAccount.setRole(requestedRole);
         userAccount.setSettings(new UserSettings());
 
         UserAccount saved = userService.save(userAccount);
