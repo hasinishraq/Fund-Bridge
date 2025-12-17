@@ -7,25 +7,38 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.Index;
+import jakarta.persistence.UniqueConstraint;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "wallet_holds", indexes = {
-        @Index(name = "idx_wh_acc_status", columnList = "account_id,status")
+        @Index(name = "idx_wh_acc_status", columnList = "account_id,status"),
+        @Index(name = "idx_wh_ref", columnList = "reference_type,reference_id"),
+        @Index(name = "idx_wh_status_created", columnList = "status, created_at")
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "uq_wh_hold_ref", columnNames = "hold_ref"),
+        @UniqueConstraint(name = "uq_wh_idem_scope", columnNames = {"account_id", "idempotency_hash"})
 })
 public class WalletHold {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "hold_ref", nullable = false, length = 36, updatable = false)
+    private String holdRef;
+
+    @Column(name = "idempotency_hash", length = 64)
+    private String idempotencyHash;
 
     @ManyToOne
     @JoinColumn(name = "account_id", nullable = false)
@@ -50,6 +63,14 @@ public class WalletHold {
     @Column(name = "reference_id", length = 64)
     private String referenceId;
 
+    @ManyToOne
+    @JoinColumn(name = "captured_tx_id")
+    private WalletTransaction capturedTransaction;
+
+    @ManyToOne
+    @JoinColumn(name = "released_tx_id")
+    private WalletTransaction releasedTransaction;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -59,6 +80,9 @@ public class WalletHold {
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
+        if (this.holdRef == null) {
+            this.holdRef = UUID.randomUUID().toString();
+        }
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -70,6 +94,22 @@ public class WalletHold {
 
     public Long getId() {
         return id;
+    }
+
+    public String getHoldRef() {
+        return holdRef;
+    }
+
+    public void setHoldRef(String holdRef) {
+        this.holdRef = holdRef;
+    }
+
+    public String getIdempotencyHash() {
+        return idempotencyHash;
+    }
+
+    public void setIdempotencyHash(String idempotencyHash) {
+        this.idempotencyHash = idempotencyHash;
     }
 
     public WalletAccount getAccount() {
@@ -126,6 +166,22 @@ public class WalletHold {
 
     public void setReferenceId(String referenceId) {
         this.referenceId = referenceId;
+    }
+
+    public WalletTransaction getCapturedTransaction() {
+        return capturedTransaction;
+    }
+
+    public void setCapturedTransaction(WalletTransaction capturedTransaction) {
+        this.capturedTransaction = capturedTransaction;
+    }
+
+    public WalletTransaction getReleasedTransaction() {
+        return releasedTransaction;
+    }
+
+    public void setReleasedTransaction(WalletTransaction releasedTransaction) {
+        this.releasedTransaction = releasedTransaction;
     }
 
     public Instant getCreatedAt() {

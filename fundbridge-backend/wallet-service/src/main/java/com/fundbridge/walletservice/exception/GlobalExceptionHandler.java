@@ -10,13 +10,22 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiError> handleBadRequest(BadRequestException exception,
+                                                     HttpServletRequest request) {
+        return ResponseEntity.badRequest()
+                .body(ApiError.of(exception.getMessage(), HttpStatus.BAD_REQUEST, request.getRequestURI()));
+    }
 
     @ExceptionHandler(ResourceConflictException.class)
     public ResponseEntity<ApiError> handleConflict(ResourceConflictException exception,
@@ -48,6 +57,16 @@ public class GlobalExceptionHandler {
                 .toList();
         return ResponseEntity.badRequest()
                 .body(ApiError.withErrors("Validation failed", HttpStatus.BAD_REQUEST, request.getRequestURI(), errors));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNoResource(NoResourceFoundException exception,
+                                                                HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of(
+                        "error", "ENDPOINT_NOT_FOUND",
+                        "message", "Invalid or malformed URL"
+                ));
     }
 
     @ExceptionHandler(Exception.class)

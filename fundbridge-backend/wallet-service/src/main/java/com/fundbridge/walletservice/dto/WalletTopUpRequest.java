@@ -10,9 +10,11 @@ public record WalletTopUpRequest(
         @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
         BigDecimal amount,
         String currency,
+        @NotNull(message = "User ID is required")
         Long userId,
         String referenceType,
         String referenceId,
-        String idempotencyKey
+        String idempotencyKey,
+        String metadata
 ) {
 }

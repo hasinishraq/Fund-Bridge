@@ -33,7 +33,7 @@ const Dashboard = () => {
     loans: [],
     wallet: null,
   })
-  const { user, refreshProfile } = useAuth()
+  const { user, refreshProfile, bootstrapping } = useAuth()
   const [kycRefreshing, setKycRefreshing] = useState(false)
   const [quickLoanValues, setQuickLoanValues] = useState({
     amount: '',
@@ -46,6 +46,13 @@ const Dashboard = () => {
 
   const loadDashboard = useCallback(
     async ({ silent = false } = {}) => {
+      if (!user?.id) {
+        if (!silent) {
+          setError('Sign in to view your dashboard')
+          setStatus(API_STATUS.error)
+        }
+        return
+      }
       if (!silent) {
         setStatus(API_STATUS.loading)
         setError('')
@@ -71,8 +78,20 @@ const Dashboard = () => {
   )
 
   useEffect(() => {
+    if (bootstrapping) {
+      return
+    }
     loadDashboard()
-  }, [loadDashboard])
+  }, [bootstrapping, loadDashboard])
+
+
+  if (bootstrapping) {
+    return (
+      <div className="page-center">
+        <Loader />
+      </div>
+    )
+  }
 
 
   const kycStatus = user?.kycStatus || 'PENDING'

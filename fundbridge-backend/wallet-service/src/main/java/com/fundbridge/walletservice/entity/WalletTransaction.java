@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
@@ -19,10 +20,12 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "wallet_transactions", uniqueConstraints = {
-        @UniqueConstraint(name = "uq_wt_idempotency", columnNames = "idempotency_key")
+        @UniqueConstraint(name = "uq_wt_tx_ref", columnNames = "tx_ref"),
+        @UniqueConstraint(name = "uq_wt_idem_scope", columnNames = {"created_by_user_id", "idempotency_hash"})
 })
 public class WalletTransaction {
 
@@ -30,8 +33,14 @@ public class WalletTransaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "idempotency_key", nullable = false, length = 80)
-    private String idempotencyKey;
+    @Column(name = "tx_ref", nullable = false, length = 36, updatable = false)
+    private String txRef;
+
+    @Column(name = "idempotency_hash", nullable = false, length = 64, updatable = false)
+    private String idempotencyHash;
+
+    @Column(name = "created_by_user_id")
+    private Long createdByUserId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -61,11 +70,20 @@ public class WalletTransaction {
     @Column(name = "reference_id", length = 64)
     private String referenceId;
 
-    @Column(name = "failure_reason", length = 120)
+    @Column(name = "request_id", length = 64)
+    private String requestId;
+
+    @Column(name = "failure_reason", length = 255)
     private String failureReason;
+
+    @Column(name = "metadata_json", columnDefinition = "json")
+    private String metadataJson;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 
     @Column(name = "posted_at")
     private Instant postedAt;
@@ -75,7 +93,17 @@ public class WalletTransaction {
 
     @PrePersist
     void onCreate() {
-        this.createdAt = Instant.now();
+        Instant now = Instant.now();
+        if (this.txRef == null) {
+            this.txRef = UUID.randomUUID().toString();
+        }
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        this.updatedAt = Instant.now();
     }
 
     public Long getId() {
@@ -86,12 +114,28 @@ public class WalletTransaction {
         this.id = id;
     }
 
-    public String getIdempotencyKey() {
-        return idempotencyKey;
+    public String getTxRef() {
+        return txRef;
     }
 
-    public void setIdempotencyKey(String idempotencyKey) {
-        this.idempotencyKey = idempotencyKey;
+    public void setTxRef(String txRef) {
+        this.txRef = txRef;
+    }
+
+    public String getIdempotencyHash() {
+        return idempotencyHash;
+    }
+
+    public void setIdempotencyHash(String idempotencyHash) {
+        this.idempotencyHash = idempotencyHash;
+    }
+
+    public Long getCreatedByUserId() {
+        return createdByUserId;
+    }
+
+    public void setCreatedByUserId(Long createdByUserId) {
+        this.createdByUserId = createdByUserId;
     }
 
     public TransactionType getType() {
@@ -158,6 +202,14 @@ public class WalletTransaction {
         this.referenceId = referenceId;
     }
 
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
+    }
+
     public String getFailureReason() {
         return failureReason;
     }
@@ -166,8 +218,20 @@ public class WalletTransaction {
         this.failureReason = failureReason;
     }
 
+    public String getMetadataJson() {
+        return metadataJson;
+    }
+
+    public void setMetadataJson(String metadataJson) {
+        this.metadataJson = metadataJson;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 
     public Instant getPostedAt() {

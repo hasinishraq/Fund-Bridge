@@ -7,9 +7,12 @@ import { useAuth } from '../../context/AuthContext'
 const Transactions = () => {
   const [transactions, setTransactions] = useState([])
   const [status, setStatus] = useState('LOADING')
-  const { user } = useAuth()
+  const { user, bootstrapping } = useAuth()
 
   useEffect(() => {
+    if (bootstrapping || !user?.id) {
+      return
+    }
     const load = async () => {
       try {
         const response = await fetchTransactions({ userId: user?.id })
@@ -22,9 +25,9 @@ const Transactions = () => {
     }
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [bootstrapping, user?.id])
 
-  if (status === 'LOADING') {
+  if (bootstrapping || status === 'LOADING') {
     return (
       <div className="page-center">
         <Loader />
