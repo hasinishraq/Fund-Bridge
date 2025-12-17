@@ -20,6 +20,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import HomePage from './pages/home/HomePage'
 import PrivateRoute from './routes/PrivateRoute'
 import DashboardLayout from './components/layout/DashboardLayout'
+import BorrowerProfile from './pages/dashboard/BorrowerProfile'
 
 const DashboardShell = () => (
   <DashboardLayout>
@@ -47,6 +48,7 @@ function App() {
           <Route element={<DashboardShell />}>
             <Route path="/dashboard" element={<DashboardRouter />} />
             <Route path="/dashboard/borrower" element={<Dashboard />} />
+            <Route path="/dashboard/borrower/profile" element={<BorrowerProfile />} />
             <Route path="/dashboard/lender" element={<LenderDashboard />} />
             <Route path="/lender/dashboard" element={<Navigate to="/dashboard/lender" replace />} />
             <Route path="/loans/apply" element={<ApplyLoan />} />
