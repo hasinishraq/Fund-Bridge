@@ -1,74 +1,55 @@
-﻿import { Link, Navigate } from 'react-router-dom';
-import RegisterForm from '../../components/auth/RegisterForm';
-import { useAuth } from '../../context/AuthContext';
-import { getRoleHomePath } from '../../utils/constants';
+import { Link, Navigate } from 'react-router-dom'
+import RegisterForm from '../../components/auth/RegisterForm'
+import { useAuth } from '../../context/AuthContext'
+import { getRoleHomePath } from '../../utils/constants'
 
 const RegisterPage = () => {
-  const { register, isAuthenticated, loading, user } = useAuth();
-  const destination = getRoleHomePath(user?.role);
+  const { register, isAuthenticated, loading, user } = useAuth()
+  const destination = getRoleHomePath(user?.role)
 
   if (isAuthenticated) {
-    return <Navigate to={destination} replace />;
+    return <Navigate to={destination} replace />
   }
 
   return (
-    <section className="auth-page">
-      <div className="auth-container">
-        <div className="auth-hero">
-          <span className="brand-badge">FundBridge</span>
-          <h1>Confidently onboard your next chapter</h1>
-          <p>
-            Unlock loan workflows, payments, and wallet management across your organization with
-            frictionless onboarding tailored for growth teams.
+    <section className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-5xl grid gap-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl md:grid-cols-[1.05fr,0.95fr] md:p-10">
+        <div className="space-y-4">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+            FundBridge
+          </span>
+          <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">Create your account</h1>
+          <p className="text-slate-600">
+            Join in a few steps to request funding or deploy capital with clarity.
           </p>
-          <ul className="auth-hero-list">
-            <li>
-              <span>01</span>
-              Guided verification gets you production-ready in minutes.
-            </li>
-            <li>
-              <span>02</span>
-              Granular access controls keep sensitive accounts safe.
-            </li>
-            <li>
-              <span>03</span>
-              Powerful analytics uncover actionable capital insights.
-            </li>
-          </ul>
-          <div className="auth-hero-metrics">
-            <article>
-              <p>Teams onboarded</p>
-              <strong>3,200+</strong>
-              <span>Across lending, payments & ops</span>
-            </article>
-            <article>
-              <p>Approval speed</p>
-              <strong>7x faster</strong>
-              <span>With automated compliance checks</span>
-            </article>
-          </div>
-          <div className="auth-hero-logos">
-            <span>Trusted by teams at</span>
-            <div className="logo-row">
-              <span>Apex</span>
-              <span>Summit</span>
-              <span>BluePeak</span>
-              <span>Lumen</span>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold text-slate-500">Fast start</p>
+              <p className="text-sm text-slate-700">Simple details to get you into the dashboard.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold text-slate-500">Secure</p>
+              <p className="text-sm text-slate-700">Compliance-ready flows with role-based access.</p>
             </div>
           </div>
         </div>
-        <div className="auth-panel">
-          <div className="auth-panel-card">
-            <p className="auth-panel-subtitle">Create your FundBridge account</p>
-            <RegisterForm onSubmit={register} loading={loading} />
-            <p className="auth-switch">
-              Already have an account? <Link to="/login">Login</Link>
-            </p>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+          <div className="mb-5 space-y-1">
+            <h2 className="text-xl font-semibold text-slate-900">Get started</h2>
+            <p className="text-sm text-slate-600">Tell us who you are and set your credentials.</p>
           </div>
+          <RegisterForm onSubmit={register} loading={loading} />
+          <p className="mt-4 text-sm text-slate-600">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-indigo-700 hover:text-indigo-900">
+              Login
+            </Link>
+          </p>
         </div>
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default RegisterPage;
+export default RegisterPage
