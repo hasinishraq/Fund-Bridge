@@ -1,4 +1,4 @@
-﻿import { MIN_PASSWORD_LENGTH } from './constants'
+﻿import { MIN_PASSWORD_LENGTH, ROLE } from './constants'
 
 export const isEmailValid = (value) => /\S+@\S+\.\S+/.test(String(value).toLowerCase())
 
@@ -22,7 +22,9 @@ export const validateLogin = ({ email, password, captchaToken }, options = {}) =
   return errors
 }
 
-export const validateRegister = ({ name, email, password, confirmPassword }) => {
+const ALLOWED_REGISTER_ROLES = [ROLE.BORROWER, ROLE.LENDER]
+
+export const validateRegister = ({ name, email, password, confirmPassword, role }) => {
   const errors = {}
   if (!isRequired(name)) {
     errors.name = 'Name is required'
@@ -35,6 +37,9 @@ export const validateRegister = ({ name, email, password, confirmPassword }) => 
   }
   if (password !== confirmPassword) {
     errors.confirmPassword = 'Passwords do not match'
+  }
+  if (!ALLOWED_REGISTER_ROLES.includes(role)) {
+    errors.role = 'Select a valid role'
   }
   return errors
 }

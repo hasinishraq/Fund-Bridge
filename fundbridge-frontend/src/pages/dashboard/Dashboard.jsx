@@ -2,7 +2,10 @@
 import { Link } from 'react-router-dom'
 import { applyForLoan, fetchLoans } from '../../api/loanApi'
 import { fetchWalletBalance } from '../../api/walletApi'
-import { API_STATUS, CURRENCY_FORMATTER } from '../../utils/constants'
+import {
+  API_STATUS,
+  CURRENCY_FORMATTER,
+} from '../../utils/constants'
 import { validateLoanPayload } from '../../utils/validators'
 import Loader from '../../components/common/Loader'
 import Button from '../../components/common/Button'
@@ -70,6 +73,7 @@ const Dashboard = () => {
   useEffect(() => {
     loadDashboard()
   }, [loadDashboard])
+
 
   const kycStatus = user?.kycStatus || 'PENDING'
   const isKycApproved = kycStatus === 'APPROVED'
@@ -200,6 +204,23 @@ const Dashboard = () => {
             <Link to="/loans" className="btn btn-secondary hero-btn">
               Manage portfolio
             </Link>
+          </div>
+          <div className="hero-highlights">
+            <div className="hero-highlight">
+              <span>Wallet ready</span>
+              <strong>{CURRENCY_FORMATTER.format(walletBalance)}</strong>
+              <small className="muted">Available to deploy</small>
+            </div>
+            <div className="hero-highlight">
+              <span>Borrow utilization</span>
+              <strong>{borrowUtilization}%</strong>
+              <small className="muted">of your total asset base</small>
+            </div>
+            <div className="hero-highlight">
+              <span>Pipeline</span>
+              <strong>{pendingLoans.length} live</strong>
+              <small className="muted">{CURRENCY_FORMATTER.format(pendingAmount)} awaiting funding</small>
+            </div>
           </div>
         </div>
         <div className="hero-balance">

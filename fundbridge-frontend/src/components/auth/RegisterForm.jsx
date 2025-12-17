@@ -2,13 +2,20 @@ import { useState } from 'react'
 import PropTypes from 'prop-types'
 import Button from '../common/Button'
 import { validateRegister } from '../../utils/validators'
+import { ROLE } from '../../utils/constants'
 
 const initialState = {
   name: '',
   email: '',
   password: '',
   confirmPassword: '',
+  role: ROLE.BORROWER,
 }
+
+const ROLE_OPTIONS = [
+  { value: ROLE.BORROWER, label: 'Borrower' },
+  { value: ROLE.LENDER, label: 'Lender' },
+]
 
 const extractFieldErrors = (error) => {
   const violations = error?.response?.data?.errors
@@ -47,6 +54,7 @@ const RegisterForm = ({ onSubmit, loading }) => {
         name: values.name.trim(),
         email: values.email.trim().toLowerCase(),
         password: values.password,
+        role: values.role,
       })
       const reviewUrl = result?.user?.kycReviewUrl
       if (reviewUrl) {
@@ -128,6 +136,18 @@ const RegisterForm = ({ onSubmit, loading }) => {
           placeholder="********"
         />
         {errors.confirmPassword && <span className="field-error">{errors.confirmPassword}</span>}
+      </label>
+
+      <label htmlFor="role">
+        Registering as
+        <select id="role" name="role" value={values.role} onChange={handleChange}>
+          {ROLE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {errors.role && <span className="field-error">{errors.role}</span>}
       </label>
 
       <Button type="submit" disabled={loading}>
