@@ -35,8 +35,14 @@ export const login = async ({ email, password, captchaToken }) => {
   return normalizeAuthResponse(data)
 }
 
-export const register = async (payload) => {
-  const { data } = await client.post('/auth/register', payload)
+export const register = async ({ name, email, password, role, captchaToken }) => {
+  const { data } = await client.post('/auth/register', {
+    name,
+    email,
+    password,
+    role,
+    captchaToken,
+  })
   return normalizeAuthResponse(data)
 }
 
