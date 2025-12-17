@@ -8,6 +8,7 @@ G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\j
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\exception\ResourceConflictException.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\dto\ApiError.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\repository\WalletTransactionRepository.java
+G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\service\EncryptionService.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\exception\ResourceNotFoundException.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\entity\WalletTransaction.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\entity\WalletStatus.java
@@ -15,6 +16,7 @@ G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\j
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\dto\CreateWalletRequest.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\entity\WalletHold.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\exception\InsufficientFundsException.java
+G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\exception\BadRequestException.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\dto\WalletTopUpRequest.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\entity\TransactionStatus.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\wallet-service\src\main\java\com\fundbridge\walletservice\repository\WalletBalanceRepository.java

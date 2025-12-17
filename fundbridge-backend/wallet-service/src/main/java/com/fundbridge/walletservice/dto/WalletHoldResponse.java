@@ -7,6 +7,7 @@ import java.time.Instant;
 
 public record WalletHoldResponse(
         Long id,
+        String holdRef,
         Long accountId,
         BigDecimal amount,
         String currency,

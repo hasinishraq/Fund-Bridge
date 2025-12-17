@@ -15,6 +15,8 @@ public interface WalletHoldRepository extends JpaRepository<WalletHold, Long> {
 
     List<WalletHold> findByAccount_IdAndStatus(Long accountId, HoldStatus status);
 
+    Optional<WalletHold> findByAccount_IdAndIdempotencyHash(Long accountId, String idempotencyHash);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select h from WalletHold h where h.id = :id")
     Optional<WalletHold> findByIdForUpdate(@Param("id") Long id);
