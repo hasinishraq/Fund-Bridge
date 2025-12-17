@@ -19,13 +19,13 @@ const sumAmounts = (collection = []) =>
   collection.reduce((sum, loan) => sum + Number(loan.amount || 0), 0)
 
 const LenderDashboard = () => {
-  const { user } = useAuth()
+  const { user, bootstrapping } = useAuth()
   const [status, setStatus] = useState(API_STATUS.idle)
   const [error, setError] = useState('')
   const [state, setState] = useState({ loans: [], wallet: null })
 
   useEffect(() => {
-    if (user?.role !== ROLE.LENDER) {
+    if (bootstrapping || user?.role !== ROLE.LENDER || !user?.id) {
       return
     }
     let cancelled = false
@@ -52,10 +52,26 @@ const LenderDashboard = () => {
     return () => {
       cancelled = true
     }
-  }, [user?.id, user?.role])
+  }, [bootstrapping, user?.id, user?.role])
+
+  if (bootstrapping) {
+    return (
+      <div className="page-center">
+        <Loader />
+      </div>
+    )
+  }
 
   if (user?.role && user.role !== ROLE.LENDER) {
     return <Navigate to={getRoleHomePath(user.role)} replace />
+  }
+
+  if (!user?.id) {
+    return (
+      <div className="card error-card">
+        <p>Sign in to view your lender dashboard.</p>
+      </div>
+    )
   }
 
   if (status === API_STATUS.loading) {

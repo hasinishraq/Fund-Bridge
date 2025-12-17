@@ -16,6 +16,7 @@ public record TransferRequest(
         String currency,
         String referenceType,
         String referenceId,
-        String idempotencyKey
+        String idempotencyKey,
+        String metadata
 ) {
 }

@@ -20,6 +20,7 @@ import com.fundbridge.walletservice.entity.WalletHold;
 import com.fundbridge.walletservice.entity.WalletLedgerEntry;
 import com.fundbridge.walletservice.entity.WalletStatus;
 import com.fundbridge.walletservice.entity.WalletTransaction;
+import com.fundbridge.walletservice.exception.BadRequestException;
 import com.fundbridge.walletservice.exception.InsufficientFundsException;
 import com.fundbridge.walletservice.exception.ResourceConflictException;
 import com.fundbridge.walletservice.exception.ResourceNotFoundException;
@@ -28,11 +29,15 @@ import com.fundbridge.walletservice.repository.WalletBalanceRepository;
 import com.fundbridge.walletservice.repository.WalletHoldRepository;
 import com.fundbridge.walletservice.repository.WalletLedgerEntryRepository;
 import com.fundbridge.walletservice.repository.WalletTransactionRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +47,7 @@ import java.util.UUID;
 public class WalletService {
 
     private static final int IDEMPOTENCY_MAX_LENGTH = 80;
+    private static final String HASH_ALGORITHM = "SHA-256";
 
     private final WalletAccountRepository accountRepository;
     private final WalletBalanceRepository balanceRepository;
@@ -49,19 +55,22 @@ public class WalletService {
     private final WalletLedgerEntryRepository ledgerEntryRepository;
     private final WalletHoldRepository holdRepository;
     private final WalletProperties walletProperties;
+    private final EncryptionService encryptionService;
 
     public WalletService(WalletAccountRepository accountRepository,
                          WalletBalanceRepository balanceRepository,
                          WalletTransactionRepository transactionRepository,
                          WalletLedgerEntryRepository ledgerEntryRepository,
                          WalletHoldRepository holdRepository,
-                         WalletProperties walletProperties) {
+                         WalletProperties walletProperties,
+                         EncryptionService encryptionService) {
         this.accountRepository = accountRepository;
         this.balanceRepository = balanceRepository;
         this.transactionRepository = transactionRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.holdRepository = holdRepository;
         this.walletProperties = walletProperties;
+        this.encryptionService = encryptionService;
     }
 
     @Transactional
@@ -90,8 +99,9 @@ public class WalletService {
         WalletAccount account = getOrCreateAccount(userId, currency, true);
         WalletBalance balance = getOrCreateBalance(account, true);
 
-        String idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey());
-        Optional<WalletTransaction> existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
+        String normalizedIdempotency = normalizeIdempotencyKey(request.idempotencyKey());
+        String idempotencyHash = hashIdempotency(userId, normalizedIdempotency);
+        Optional<WalletTransaction> existing = transactionRepository.findByCreatedByUserIdAndIdempotencyHash(userId, idempotencyHash);
         if (existing.isPresent()) {
             WalletTransaction tx = existing.get();
             if (tx.getStatus() == TransactionStatus.POSTED) {
@@ -101,7 +111,9 @@ public class WalletService {
         }
 
         WalletTransaction transaction = new WalletTransaction();
-        transaction.setIdempotencyKey(idempotencyKey);
+        transaction.setTxRef(generateTxRef());
+        transaction.setIdempotencyHash(idempotencyHash);
+        transaction.setCreatedByUserId(userId);
         transaction.setType(TransactionType.FUNDING);
         transaction.setStatus(TransactionStatus.PENDING);
         transaction.setToAccount(account);
@@ -109,15 +121,10 @@ public class WalletService {
         transaction.setCurrency(currency);
         transaction.setReferenceType(request.referenceType());
         transaction.setReferenceId(request.referenceId());
+        transaction.setMetadataJson(encryptMetadata(request.metadata(), transaction.getTxRef()));
         transactionRepository.save(transaction);
 
-        WalletLedgerEntry credit = new WalletLedgerEntry();
-        credit.setTransaction(transaction);
-        credit.setAccount(account);
-        credit.setEntryType(EntryType.CREDIT);
-        credit.setAmount(amount);
-        credit.setCurrency(currency);
-        ledgerEntryRepository.save(credit);
+        WalletLedgerEntry credit = createLedgerEntry(transaction, account, EntryType.CREDIT, amount, currency);
         transaction.getLedgerEntries().add(credit);
 
         balance.setAvailable(balance.getAvailable().add(amount));
@@ -134,16 +141,6 @@ public class WalletService {
     public WalletTransactionResponse transfer(TransferRequest request) {
         BigDecimal amount = normalizeAmount(request.amount());
         String currency = normalizeCurrencyOrNull(request.currency());
-        String idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey());
-
-        Optional<WalletTransaction> existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
-        if (existing.isPresent()) {
-            WalletTransaction tx = existing.get();
-            if (tx.getStatus() == TransactionStatus.POSTED) {
-                return toTransaction(tx);
-            }
-            throw new ResourceConflictException("Transaction already exists with status " + tx.getStatus());
-        }
 
         WalletAccount fromAccount = accountRepository.findByIdForUpdate(request.fromAccountId())
                 .orElseThrow(() -> new ResourceNotFoundException("Source wallet not found"));
@@ -158,6 +155,18 @@ public class WalletService {
         }
         String effectiveCurrency = fromAccount.getCurrency();
 
+        Long scopeUserId = fromAccount.getUserId();
+        String normalizedIdempotency = normalizeIdempotencyKey(request.idempotencyKey());
+        String idempotencyHash = hashIdempotency(scopeUserId, normalizedIdempotency);
+        Optional<WalletTransaction> existing = transactionRepository.findByCreatedByUserIdAndIdempotencyHash(scopeUserId, idempotencyHash);
+        if (existing.isPresent()) {
+            WalletTransaction tx = existing.get();
+            if (tx.getStatus() == TransactionStatus.POSTED) {
+                return toTransaction(tx);
+            }
+            throw new ResourceConflictException("Transaction already exists with status " + tx.getStatus());
+        }
+
         WalletBalance fromBalance = getOrCreateBalance(fromAccount, true);
         WalletBalance toBalance = getOrCreateBalance(toAccount, true);
 
@@ -166,7 +175,9 @@ public class WalletService {
         }
 
         WalletTransaction transaction = new WalletTransaction();
-        transaction.setIdempotencyKey(idempotencyKey);
+        transaction.setTxRef(generateTxRef());
+        transaction.setIdempotencyHash(idempotencyHash);
+        transaction.setCreatedByUserId(scopeUserId);
         transaction.setType(TransactionType.P2P_TRANSFER);
         transaction.setStatus(TransactionStatus.PENDING);
         transaction.setFromAccount(fromAccount);
@@ -175,24 +186,13 @@ public class WalletService {
         transaction.setCurrency(effectiveCurrency);
         transaction.setReferenceType(request.referenceType());
         transaction.setReferenceId(request.referenceId());
+        transaction.setMetadataJson(encryptMetadata(request.metadata(), transaction.getTxRef()));
         transactionRepository.save(transaction);
 
-        WalletLedgerEntry debit = new WalletLedgerEntry();
-        debit.setTransaction(transaction);
-        debit.setAccount(fromAccount);
-        debit.setEntryType(EntryType.DEBIT);
-        debit.setAmount(amount);
-        debit.setCurrency(effectiveCurrency);
-        ledgerEntryRepository.save(debit);
+        WalletLedgerEntry debit = createLedgerEntry(transaction, fromAccount, EntryType.DEBIT, amount, effectiveCurrency);
         transaction.getLedgerEntries().add(debit);
 
-        WalletLedgerEntry credit = new WalletLedgerEntry();
-        credit.setTransaction(transaction);
-        credit.setAccount(toAccount);
-        credit.setEntryType(EntryType.CREDIT);
-        credit.setAmount(amount);
-        credit.setCurrency(effectiveCurrency);
-        ledgerEntryRepository.save(credit);
+        WalletLedgerEntry credit = createLedgerEntry(transaction, toAccount, EntryType.CREDIT, amount, effectiveCurrency);
         transaction.getLedgerEntries().add(credit);
 
         fromBalance.setAvailable(fromBalance.getAvailable().subtract(amount));
@@ -232,6 +232,17 @@ public class WalletService {
         }
         BigDecimal amount = normalizeAmount(request.amount());
         WalletBalance balance = getOrCreateBalance(account, true);
+
+        String holdIdempotencyHash = null;
+        if (request.idempotencyKey() != null && !request.idempotencyKey().isBlank()) {
+            String normalizedKey = normalizeIdempotencyKey(request.idempotencyKey());
+            holdIdempotencyHash = hashIdempotency(account.getUserId(), normalizedKey);
+            Optional<WalletHold> existingHold = holdRepository.findByAccount_IdAndIdempotencyHash(account.getId(), holdIdempotencyHash);
+            if (existingHold.isPresent()) {
+                return toHold(existingHold.get());
+            }
+        }
+
         if (balance.getAvailable().compareTo(amount) < 0) {
             throw new InsufficientFundsException(amount, balance.getAvailable());
         }
@@ -241,6 +252,8 @@ public class WalletService {
         balanceRepository.save(balance);
 
         WalletHold hold = new WalletHold();
+        hold.setHoldRef(generateHoldRef());
+        hold.setIdempotencyHash(holdIdempotencyHash);
         hold.setAccount(account);
         hold.setAmount(amount);
         hold.setCurrency(account.getCurrency());
@@ -282,12 +295,15 @@ public class WalletService {
         balance.setHeld(balance.getHeld().subtract(hold.getAmount()));
         balanceRepository.save(balance);
 
-        String idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey());
-        Optional<WalletTransaction> existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
+        Long scopeUserId = hold.getAccount().getUserId();
+        String normalizedIdempotency = normalizeIdempotencyKey(request.idempotencyKey());
+        String idempotencyHash = hashIdempotency(scopeUserId, normalizedIdempotency);
+        Optional<WalletTransaction> existing = transactionRepository.findByCreatedByUserIdAndIdempotencyHash(scopeUserId, idempotencyHash);
         if (existing.isPresent()) {
             WalletTransaction tx = existing.get();
             if (tx.getStatus() == TransactionStatus.POSTED) {
                 hold.setStatus(HoldStatus.CAPTURED);
+                hold.setCapturedTransaction(tx);
                 holdRepository.save(hold);
                 return toTransaction(tx);
             }
@@ -295,7 +311,9 @@ public class WalletService {
         }
 
         WalletTransaction transaction = new WalletTransaction();
-        transaction.setIdempotencyKey(idempotencyKey);
+        transaction.setTxRef(generateTxRef());
+        transaction.setIdempotencyHash(idempotencyHash);
+        transaction.setCreatedByUserId(scopeUserId);
         transaction.setType(request.transactionType() != null ? request.transactionType() : TransactionType.EMI_REPAY);
         transaction.setStatus(TransactionStatus.PENDING);
         transaction.setFromAccount(hold.getAccount());
@@ -303,15 +321,10 @@ public class WalletService {
         transaction.setCurrency(hold.getCurrency());
         transaction.setReferenceType(request.referenceType());
         transaction.setReferenceId(request.referenceId());
+        transaction.setMetadataJson(encryptMetadata(request.metadata(), transaction.getTxRef()));
         transactionRepository.save(transaction);
 
-        WalletLedgerEntry debit = new WalletLedgerEntry();
-        debit.setTransaction(transaction);
-        debit.setAccount(hold.getAccount());
-        debit.setEntryType(EntryType.DEBIT);
-        debit.setAmount(hold.getAmount());
-        debit.setCurrency(hold.getCurrency());
-        ledgerEntryRepository.save(debit);
+        WalletLedgerEntry debit = createLedgerEntry(transaction, hold.getAccount(), EntryType.DEBIT, hold.getAmount(), hold.getCurrency());
         transaction.getLedgerEntries().add(debit);
 
         transaction.setStatus(TransactionStatus.POSTED);
@@ -319,6 +332,7 @@ public class WalletService {
         transactionRepository.save(transaction);
 
         hold.setStatus(HoldStatus.CAPTURED);
+        hold.setCapturedTransaction(transaction);
         holdRepository.save(hold);
         return toTransaction(transaction);
     }
@@ -337,12 +351,24 @@ public class WalletService {
         return accountRepository.save(account);
     }
 
+    @Transactional
     private WalletBalance getOrCreateBalance(WalletAccount account, boolean lock) {
+        if (account == null || account.getId() == null) {
+            throw new IllegalStateException("Wallet account must be persisted before creating balance");
+        }
+        Long accountId = account.getId();
+
         Optional<WalletBalance> existing = lock
-                ? balanceRepository.findByAccountIdForUpdate(account.getId())
-                : balanceRepository.findById(account.getId());
+                ? balanceRepository.findByAccountIdForUpdate(accountId)
+                : balanceRepository.findById(accountId);
         if (existing.isPresent()) {
             WalletBalance balance = existing.get();
+            if (balance.getAccountId() == null) {
+                balance.setAccountId(accountId);
+            }
+            if (balance.getAccount() == null) {
+                balance.setAccount(account);
+            }
             if (balance.getAvailable() == null) {
                 balance.setAvailable(BigDecimal.ZERO);
             }
@@ -353,9 +379,38 @@ public class WalletService {
         }
         WalletBalance balance = new WalletBalance();
         balance.setAccount(account);
+        balance.setAccountId(accountId);
         balance.setAvailable(BigDecimal.ZERO);
         balance.setHeld(BigDecimal.ZERO);
-        return balanceRepository.save(balance);
+        try {
+            return balanceRepository.saveAndFlush(balance);
+        } catch (DataIntegrityViolationException ex) {
+            return (lock
+                    ? balanceRepository.findByAccountIdForUpdate(accountId)
+                    : balanceRepository.findById(accountId))
+                    .orElseThrow(() -> new IllegalStateException("Failed to load wallet balance after duplicate creation", ex));
+        }
+    }
+
+    private WalletLedgerEntry createLedgerEntry(WalletTransaction transaction,
+                                                WalletAccount account,
+                                                EntryType entryType,
+                                                BigDecimal amount,
+                                                String currency) {
+        String prevHash = ledgerEntryRepository.findTopByAccount_IdOrderByCreatedAtDescIdDesc(account.getId())
+                .map(WalletLedgerEntry::getEntryHash)
+                .orElse(null);
+        Instant now = Instant.now();
+        WalletLedgerEntry entry = new WalletLedgerEntry();
+        entry.setTransaction(transaction);
+        entry.setAccount(account);
+        entry.setEntryType(entryType);
+        entry.setAmount(amount);
+        entry.setCurrency(currency);
+        entry.setPrevHash(prevHash);
+        entry.setCreatedAt(now);
+        entry.setEntryHash(computeLedgerEntryHash(prevHash, transaction.getId(), account.getId(), entryType, amount, currency, now));
+        return ledgerEntryRepository.save(entry);
     }
 
     private WalletSummaryResponse toSummary(WalletAccount account, WalletBalance balance) {
@@ -373,7 +428,7 @@ public class WalletService {
     private WalletTransactionResponse toTransaction(WalletTransaction transaction) {
         return new WalletTransactionResponse(
                 transaction.getId(),
-                transaction.getIdempotencyKey(),
+                transaction.getTxRef(),
                 transaction.getType(),
                 transaction.getStatus(),
                 transaction.getAmount(),
@@ -391,6 +446,7 @@ public class WalletService {
     private WalletHoldResponse toHold(WalletHold hold) {
         return new WalletHoldResponse(
                 hold.getId(),
+                hold.getHoldRef(),
                 hold.getAccount().getId(),
                 hold.getAmount(),
                 hold.getCurrency(),
@@ -426,10 +482,10 @@ public class WalletService {
     }
 
     private Long resolveUserId(Long userId) {
-        if (userId != null) {
-            return userId;
+        if (userId == null) {
+            throw new BadRequestException("userId is required for wallet operations");
         }
-        return walletProperties.getDemoUserId();
+        return userId;
     }
 
     private String normalizeIdempotencyKey(String key) {
@@ -438,5 +494,56 @@ public class WalletService {
             return value.substring(0, IDEMPOTENCY_MAX_LENGTH);
         }
         return value;
+    }
+
+    private String hashIdempotency(Long scopeId, String normalizedKey) {
+        String scopedKey = scopeId + ":" + normalizedKey;
+        return sha256(scopedKey);
+    }
+
+    private String computeLedgerEntryHash(String prevHash,
+                                          Long txId,
+                                          Long accountId,
+                                          EntryType entryType,
+                                          BigDecimal amount,
+                                          String currency,
+                                          Instant createdAt) {
+        String payload = (prevHash != null ? prevHash : "") +
+                "|" + txId +
+                "|" + accountId +
+                "|" + entryType.name() +
+                "|" + amount.setScale(2, RoundingMode.HALF_UP).toPlainString() +
+                "|" + currency +
+                "|" + createdAt.toEpochMilli();
+        return sha256(payload);
+    }
+
+    private String sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
+    }
+
+    private String generateTxRef() {
+        return UUID.randomUUID().toString();
+    }
+
+    private String generateHoldRef() {
+        return UUID.randomUUID().toString();
+    }
+
+    private String encryptMetadata(String metadata, String aad) {
+        if (metadata == null || metadata.isBlank()) {
+            return null;
+        }
+        return encryptionService.encrypt(metadata.trim(), aad);
     }
 }

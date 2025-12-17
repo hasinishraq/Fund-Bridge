@@ -18,6 +18,7 @@ spring:
 wallet:
   default-currency: ${WALLET_DEFAULT_CURRENCY:BDT}
   demo-user-id: ${WALLET_DEFAULT_USER_ID:1}
+  data-encryption-key: ${WALLET_DATA_ENCRYPTION_KEY:}
 
 storage:
   provider: ${STORAGE_PROVIDER:local}
