@@ -1,29 +1,36 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { fetchWalletBalance, topUpWallet } from '../../api/walletApi'
-import Button from '../../components/common/Button'
-import { CURRENCY_FORMATTER } from '../../utils/constants'
+import Loader from '../../components/common/Loader'
+import { API_STATUS, CURRENCY_FORMATTER } from '../../utils/constants'
 import { useAuth } from '../../context/AuthContext'
+
+const QUICK_AMOUNTS = [100, 250, 500, 1000]
 
 const WalletBalance = () => {
   const [wallet, setWallet] = useState(null)
   const [amount, setAmount] = useState('')
-  const [status, setStatus] = useState('LOADING')
-  const [message, setMessage] = useState('')
+  const [status, setStatus] = useState(API_STATUS.loading)
+  const [formStatus, setFormStatus] = useState(API_STATUS.idle)
+  const [formMessage, setFormMessage] = useState('')
   const { user, bootstrapping } = useAuth()
 
-  const loadWallet = async () => {
+  const loadWallet = async ({ silent = false } = {}) => {
     if (!user?.id) {
-      setStatus('ERROR')
-      setMessage('Sign in to view your wallet')
+      setStatus(API_STATUS.error)
+      setFormMessage('Sign in to view your wallet')
       return
     }
+    if (!silent) {
+      setStatus(API_STATUS.loading)
+    }
     try {
-      const response = await fetchWalletBalance({ userId: user?.id })
+      const response = await fetchWalletBalance({ userId: user.id })
       setWallet(response)
-      setStatus('SUCCESS')
+      setStatus(API_STATUS.success)
     } catch (error) {
       console.error(error)
-      setStatus('ERROR')
+      setStatus(API_STATUS.error)
     }
   }
 
@@ -37,71 +44,221 @@ const WalletBalance = () => {
 
   const handleTopUp = async (event) => {
     event.preventDefault()
-    if (!amount || Number(amount) <= 0) {
-      setMessage('Enter an amount greater than 0')
+    const numericAmount = Number(amount)
+    if (!amount || Number.isNaN(numericAmount) || numericAmount <= 0) {
+      setFormStatus(API_STATUS.error)
+      setFormMessage('Enter an amount greater than 0')
       return
     }
-    setStatus('LOADING')
-    setMessage('')
+    setFormStatus(API_STATUS.loading)
+    setFormMessage('')
     try {
       await topUpWallet({
-        amount: Number(amount),
+        amount: numericAmount,
         userId: user?.id,
         currency: wallet?.currency,
       })
       setAmount('')
-      setMessage('Wallet funded successfully')
-      await loadWallet()
+      setFormStatus(API_STATUS.success)
+      setFormMessage('Wallet funded successfully')
+      await loadWallet({ silent: true })
     } catch (error) {
       console.error(error)
-      setMessage('Unable to top up wallet')
-      setStatus('SUCCESS')
+      setFormStatus(API_STATUS.error)
+      setFormMessage('Unable to top up wallet right now')
     }
   }
 
-  if (bootstrapping || status === 'LOADING') {
+  const availableBalance = useMemo(() => {
+    const balance = Number(wallet?.balance ?? 0)
+    const held = Number(wallet?.held ?? 0)
+    return Math.max(0, balance - held)
+  }, [wallet?.balance, wallet?.held])
+
+  if (bootstrapping || status === API_STATUS.loading) {
     return (
-      <section className="card">
-        <p>Loading wallet...</p>
-      </section>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader />
+      </div>
     )
   }
 
-  if (status === 'ERROR') {
+  if (status === API_STATUS.error) {
     return (
-      <section className="card error-card">
-        <p>Unable to load wallet information</p>
-      </section>
+      <div className="mx-auto max-w-3xl rounded-2xl border border-rose-400/30 bg-rose-50 px-6 py-5 text-rose-800 shadow">
+        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-rose-600">Wallet</p>
+        <p className="mt-2 text-lg font-semibold">Unable to load wallet information</p>
+        <button
+          type="button"
+          onClick={() => loadWallet()}
+          className="mt-4 inline-flex items-center justify-center rounded-xl bg-rose-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200"
+        >
+          Try again
+        </button>
+      </div>
     )
   }
+
+  const currency = wallet?.currency || 'USD'
+  const lastUpdated = wallet?.updatedAt
+    ? new Date(wallet.updatedAt).toLocaleString()
+    : 'Just now'
 
   return (
-    <section className="card">
-      <h2>Wallet</h2>
-      <p className="muted">
-        {wallet?.currency || '---'} • Status: <strong>{wallet?.status || 'UNKNOWN'}</strong>
-      </p>
-      <h1>{CURRENCY_FORMATTER.format(wallet?.balance ?? 0)}</h1>
-      <p className="muted">
-        Held: {CURRENCY_FORMATTER.format(wallet?.held ?? 0)} • Updated:{' '}
-        {wallet?.updatedAt ? new Date(wallet.updatedAt).toLocaleString() : '—'}
-      </p>
-      <form className="wallet-topup" onSubmit={handleTopUp}>
-        <label htmlFor="topupAmount" className="visually-hidden">
-          Top up amount
-        </label>
-        <input
-          id="topupAmount"
-          type="number"
-          min="1"
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-          placeholder="Enter amount"
-        />
-        <Button type="submit">Top Up</Button>
-      </form>
-      {message && <p className="form-message success">{message}</p>}
-    </section>
+    <div className="space-y-6">
+      <div className="rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm md:px-10">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">Wallet</p>
+            <h1 className="text-3xl font-bold text-slate-900">
+              {CURRENCY_FORMATTER.format(wallet?.balance ?? 0)}{' '}
+              <span className="text-lg font-semibold text-slate-500">{currency}</span>
+            </h1>
+            <p className="text-sm text-slate-600">Last updated: {lastUpdated}</p>
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-700">
+              Status: {wallet?.status || 'Unknown'}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => loadWallet()}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            >
+              Refresh
+            </button>
+            <Link
+              to="/wallet/transactions"
+              className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              View transactions
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Available</p>
+            <p className="text-xl font-semibold text-emerald-700">
+              {CURRENCY_FORMATTER.format(availableBalance)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Held</p>
+            <p className="text-xl font-semibold text-slate-900">
+              {CURRENCY_FORMATTER.format(wallet?.held ?? 0)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Currency</p>
+            <p className="text-xl font-semibold text-slate-900">{currency}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">Funding</p>
+              <h2 className="text-xl font-semibold text-slate-900">Top up wallet</h2>
+              <p className="text-sm text-slate-600">
+                Add funds to request disbursements and repay loans instantly.
+              </p>
+            </div>
+          </div>
+
+          <form className="mt-4 space-y-4" onSubmit={handleTopUp}>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-800" htmlFor="topupAmount">
+                Amount
+              </label>
+              <div className="relative">
+                <input
+                  id="topupAmount"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  placeholder="Enter amount"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-16 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+                <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-sm font-semibold text-slate-500">
+                  {currency}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {QUICK_AMOUNTS.map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => setAmount(String(value))}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800"
+                >
+                  +{CURRENCY_FORMATTER.format(value)}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="submit"
+              disabled={formStatus === API_STATUS.loading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {formStatus === API_STATUS.loading ? 'Funding...' : 'Fund wallet'}
+            </button>
+
+            {formMessage && (
+              <p
+                className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
+                  formStatus === API_STATUS.error
+                    ? 'border-rose-200 bg-rose-50 text-rose-700'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                }`}
+              >
+                {formMessage}
+              </p>
+            )}
+          </form>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">Overview</p>
+              <h2 className="text-xl font-semibold text-slate-900">Summary</h2>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3 text-sm text-slate-700">
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <span className="font-semibold text-slate-800">Total balance</span>
+              <span className="font-semibold text-slate-900">
+                {CURRENCY_FORMATTER.format(wallet?.balance ?? 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <span className="font-semibold text-slate-800">Held funds</span>
+              <span className="font-semibold text-slate-900">
+                {CURRENCY_FORMATTER.format(wallet?.held ?? 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <span className="font-semibold text-slate-800">Available</span>
+              <span className="font-semibold text-emerald-700">
+                {CURRENCY_FORMATTER.format(availableBalance)}
+              </span>
+            </div>
+          </div>
+          <p className="mt-4 text-xs text-slate-500">
+            Wallet balances are subject to verification and settlement timelines. For large top ups,
+            contact support for faster clearing.
+          </p>
+        </section>
+      </div>
+    </div>
   )
 }
 
