@@ -1,13 +1,15 @@
-﻿import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Button from '../common/Button'
 import { useAuth } from '../../context/AuthContext'
+import { getRoleHomePath } from '../../utils/constants'
 
 const Navbar = () => {
   const { user, logout } = useAuth()
+  const brandDestination = getRoleHomePath(user?.role)
 
   return (
     <header className="navbar">
-      <Link to="/dashboard" className="brand">
+      <Link to={brandDestination} className="brand">
         <span className="brand-mark" aria-hidden="true" />
         FundBridge
       </Link>
