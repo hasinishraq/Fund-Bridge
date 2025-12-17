@@ -16,6 +16,7 @@ public record CreateHoldRequest(
         @NotBlank(message = "Reason is required")
         String reason,
         String referenceType,
-        String referenceId
+        String referenceId,
+        String idempotencyKey
 ) {
 }

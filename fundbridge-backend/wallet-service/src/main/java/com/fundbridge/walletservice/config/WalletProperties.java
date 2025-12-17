@@ -7,6 +7,7 @@ public class WalletProperties {
 
     private String defaultCurrency = "BDT";
     private Long demoUserId = 1L;
+    private String dataEncryptionKey;
 
     public String getDefaultCurrency() {
         return defaultCurrency;
@@ -22,5 +23,13 @@ public class WalletProperties {
 
     public void setDemoUserId(Long demoUserId) {
         this.demoUserId = demoUserId;
+    }
+
+    public String getDataEncryptionKey() {
+        return dataEncryptionKey;
+    }
+
+    public void setDataEncryptionKey(String dataEncryptionKey) {
+        this.dataEncryptionKey = dataEncryptionKey;
     }
 }

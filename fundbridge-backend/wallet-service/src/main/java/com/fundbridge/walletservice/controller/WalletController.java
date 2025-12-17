@@ -77,7 +77,7 @@ public class WalletController {
     @PostMapping("/holds/{holdId}/capture")
     public ResponseEntity<WalletTransactionResponse> captureHold(@PathVariable Long holdId,
                                                                  @RequestBody(required = false) CaptureHoldRequest request) {
-        CaptureHoldRequest payload = request != null ? request : new CaptureHoldRequest(null, null, null, null);
+        CaptureHoldRequest payload = request != null ? request : new CaptureHoldRequest(null, null, null, null, null);
         return ResponseEntity.ok(walletService.captureHold(holdId, payload));
     }
 }

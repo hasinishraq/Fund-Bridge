@@ -8,7 +8,7 @@ import java.time.Instant;
 
 public record WalletTransactionResponse(
         Long id,
-        String idempotencyKey,
+        String txRef,
         TransactionType type,
         TransactionStatus status,
         BigDecimal amount,

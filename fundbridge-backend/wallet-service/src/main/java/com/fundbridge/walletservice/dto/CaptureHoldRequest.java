@@ -6,6 +6,7 @@ public record CaptureHoldRequest(
         TransactionType transactionType,
         String referenceType,
         String referenceId,
-        String idempotencyKey
+        String idempotencyKey,
+        String metadata
 ) {
 }

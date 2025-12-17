@@ -9,9 +9,14 @@ const WalletBalance = () => {
   const [amount, setAmount] = useState('')
   const [status, setStatus] = useState('LOADING')
   const [message, setMessage] = useState('')
-  const { user } = useAuth()
+  const { user, bootstrapping } = useAuth()
 
   const loadWallet = async () => {
+    if (!user?.id) {
+      setStatus('ERROR')
+      setMessage('Sign in to view your wallet')
+      return
+    }
     try {
       const response = await fetchWalletBalance({ userId: user?.id })
       setWallet(response)
@@ -23,10 +28,12 @@ const WalletBalance = () => {
   }
 
   useEffect(() => {
+    if (bootstrapping) {
+      return
+    }
     loadWallet()
-    // We intentionally skip user as a dependency to avoid refetch loops while the profile bootstraps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [bootstrapping, user?.id])
 
   const handleTopUp = async (event) => {
     event.preventDefault()
@@ -52,7 +59,7 @@ const WalletBalance = () => {
     }
   }
 
-  if (status === 'LOADING') {
+  if (bootstrapping || status === 'LOADING') {
     return (
       <section className="card">
         <p>Loading wallet...</p>

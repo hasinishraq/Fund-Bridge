@@ -7,11 +7,11 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.persistence.Index;
+import jakarta.persistence.UniqueConstraint;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -19,7 +19,9 @@ import java.time.Instant;
 @Entity
 @Table(name = "wallet_ledger_entries", indexes = {
         @Index(name = "idx_wle_tx", columnList = "tx_id"),
-        @Index(name = "idx_wle_account", columnList = "account_id")
+        @Index(name = "idx_wle_account_created", columnList = "account_id, created_at, id")
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "uq_wle_tx_account_type", columnNames = {"tx_id", "account_id", "entry_type"})
 })
 public class WalletLedgerEntry {
 
@@ -45,13 +47,14 @@ public class WalletLedgerEntry {
     @Column(nullable = false, length = 3)
     private String currency = "BDT";
 
+    @Column(name = "prev_hash", length = 64)
+    private String prevHash;
+
+    @Column(name = "entry_hash", nullable = false, length = 64)
+    private String entryHash;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
-
-    @PrePersist
-    void onCreate() {
-        this.createdAt = Instant.now();
-    }
 
     public Long getId() {
         return id;
@@ -99,5 +102,25 @@ public class WalletLedgerEntry {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getPrevHash() {
+        return prevHash;
+    }
+
+    public void setPrevHash(String prevHash) {
+        this.prevHash = prevHash;
+    }
+
+    public String getEntryHash() {
+        return entryHash;
+    }
+
+    public void setEntryHash(String entryHash) {
+        this.entryHash = entryHash;
     }
 }

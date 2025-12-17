@@ -17,6 +17,7 @@ com\fundbridge\walletservice\entity\WalletStatus.class
 com\fundbridge\walletservice\entity\WalletTransaction.class
 com\fundbridge\walletservice\config\StorageProperties$Paths.class
 com\fundbridge\walletservice\exception\ResourceConflictException.class
+com\fundbridge\walletservice\service\EncryptionService.class
 com\fundbridge\walletservice\config\StorageProperties$Credentials.class
 com\fundbridge\walletservice\exception\ResourceNotFoundException.class
 com\fundbridge\walletservice\config\WalletProperties.class
@@ -35,3 +36,4 @@ com\fundbridge\walletservice\repository\WalletTransactionRepository.class
 com\fundbridge\walletservice\entity\WalletHold.class
 com\fundbridge\walletservice\entity\WalletBalance.class
 com\fundbridge\walletservice\repository\WalletHoldRepository.class
+com\fundbridge\walletservice\exception\BadRequestException.class
