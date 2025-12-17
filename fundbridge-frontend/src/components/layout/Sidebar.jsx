@@ -68,6 +68,7 @@ const Sidebar = () => {
           <NavLink
             key={link.to}
             to={link.to}
+            end={link.exact !== false}
             className={({ isActive }) =>
               [
                 'group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition',
