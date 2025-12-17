@@ -33,6 +33,7 @@ export const API_STATUS = {
 
 export const NAV_LINKS = [
   { to: '/dashboard/borrower', label: 'Dashboard', roles: [ROLE.BORROWER] },
+  { to: '/dashboard/borrower/profile', label: 'Profile', roles: [ROLE.BORROWER] },
   { to: '/dashboard/lender', label: 'Lender Dashboard', roles: [ROLE.LENDER] },
   { to: '/loans/apply', label: 'Apply Loan', roles: [ROLE.BORROWER] },
   { to: '/loans', label: 'My Loans', roles: [ROLE.BORROWER] },
