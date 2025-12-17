@@ -53,6 +53,7 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        recaptchaService.verify(request.captchaToken());
         String normalizedEmail = request.email().trim().toLowerCase(Locale.US);
         if (userService.existsByEmail(normalizedEmail)) {
             throw new ResourceConflictException("Email already registered");

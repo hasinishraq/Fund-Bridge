@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import PropTypes from 'prop-types'
+import ReCAPTCHA from 'react-google-recaptcha'
 import { validateRegister } from '../../utils/validators'
 import { ROLE } from '../../utils/constants'
+
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
 const initialState = {
   name: '',
@@ -9,6 +12,7 @@ const initialState = {
   password: '',
   confirmPassword: '',
   role: ROLE.BORROWER,
+  captchaToken: '',
 }
 
 const ROLE_OPTIONS = [
@@ -34,15 +38,56 @@ const RegisterForm = ({ onSubmit, loading }) => {
   const [values, setValues] = useState(initialState)
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
+  const recaptchaRef = useRef(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const isCaptchaEnabled = Boolean(recaptchaSiteKey)
+  const isSubmitDisabled = loading || (isCaptchaEnabled && !values.captchaToken)
 
   const handleChange = (event) => {
     const { name, value } = event.target
     setValues((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handleCaptchaChange = (token) => {
+    setValues((prev) => ({
+      ...prev,
+      captchaToken: token || '',
+    }))
+    if (token) {
+      setErrors((prev) => {
+        if (!prev.captchaToken) {
+          return prev
+        }
+        const next = { ...prev }
+        delete next.captchaToken
+        return next
+      })
+    }
+  }
+
+  const resetCaptcha = () => {
+    if (!isCaptchaEnabled) {
+      return
+    }
+    recaptchaRef.current?.reset()
+    setValues((prev) => ({
+      ...prev,
+      captchaToken: '',
+    }))
+  }
+
+  const handleCaptchaError = () => {
+    resetCaptcha()
+    setErrors((prev) => ({
+      ...prev,
+      captchaToken: 'Captcha could not be verified. Please try again.',
+    }))
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const validationErrors = validateRegister(values)
+    const validationErrors = validateRegister(values, { requireCaptcha: isCaptchaEnabled })
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) {
       return
@@ -54,12 +99,14 @@ const RegisterForm = ({ onSubmit, loading }) => {
         email: values.email.trim().toLowerCase(),
         password: values.password,
         role: values.role,
+        captchaToken: values.captchaToken,
       })
       const reviewUrl = result?.user?.kycReviewUrl
       if (reviewUrl) {
         window.location.assign(reviewUrl)
       }
     } catch (error) {
+      resetCaptcha()
       const serverErrors = extractFieldErrors(error)
       if (serverErrors) {
         setErrors(serverErrors)
@@ -119,16 +166,25 @@ const RegisterForm = ({ onSubmit, loading }) => {
         <label className="text-sm font-semibold text-slate-800" htmlFor="password">
           Password
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          value={values.password}
-          onChange={handleChange}
-          placeholder="********"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-        />
+        <div className="relative">
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            value={values.password}
+            onChange={handleChange}
+            placeholder="********"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 pr-16 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute inset-y-0 right-0 px-3 text-xs font-semibold text-indigo-700"
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
         {errors.password && (
           <span className="text-xs font-medium text-rose-600">{errors.password}</span>
         )}
@@ -138,16 +194,25 @@ const RegisterForm = ({ onSubmit, loading }) => {
         <label className="text-sm font-semibold text-slate-800" htmlFor="confirmPassword">
           Confirm password
         </label>
-        <input
-          id="confirmPassword"
-          name="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          value={values.confirmPassword}
-          onChange={handleChange}
-          placeholder="********"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-        />
+        <div className="relative">
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type={showConfirmPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            value={values.confirmPassword}
+            onChange={handleChange}
+            placeholder="********"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 pr-16 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword((prev) => !prev)}
+            className="absolute inset-y-0 right-0 px-3 text-xs font-semibold text-indigo-700"
+          >
+            {showConfirmPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
         {errors.confirmPassword && (
           <span className="text-xs font-medium text-rose-600">{errors.confirmPassword}</span>
         )}
@@ -173,9 +238,24 @@ const RegisterForm = ({ onSubmit, loading }) => {
         {errors.role && <span className="text-xs font-medium text-rose-600">{errors.role}</span>}
       </div>
 
+      {isCaptchaEnabled && (
+        <div className="space-y-1.5">
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey={recaptchaSiteKey}
+            onChange={handleCaptchaChange}
+            onExpired={resetCaptcha}
+            onErrored={handleCaptchaError}
+          />
+          {errors.captchaToken && (
+            <span className="text-xs font-medium text-rose-600">{errors.captchaToken}</span>
+          )}
+        </div>
+      )}
+
       <button
         type="submit"
-        disabled={loading}
+        disabled={isSubmitDisabled}
         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? 'Creating account...' : 'Create account'}

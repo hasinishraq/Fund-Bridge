@@ -17,6 +17,9 @@ public record RegisterRequest(
         @Size(min = 8, message = "Password must be at least 8 characters long")
         String password,
 
-        UserRole role
+        UserRole role,
+
+        @Size(max = 4096, message = "Captcha token is invalid")
+        String captchaToken
 ) {
 }
