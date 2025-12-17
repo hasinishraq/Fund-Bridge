@@ -1,14 +1,10 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { applyForLoan, fetchLoans } from '../../api/loanApi'
 import { fetchWalletBalance } from '../../api/walletApi'
-import {
-  API_STATUS,
-  CURRENCY_FORMATTER,
-} from '../../utils/constants'
+import { API_STATUS, CURRENCY_FORMATTER } from '../../utils/constants'
 import { validateLoanPayload } from '../../utils/validators'
 import Loader from '../../components/common/Loader'
-import Button from '../../components/common/Button'
 import { useAuth } from '../../context/AuthContext'
 
 const KYC_MESSAGES = {
@@ -25,6 +21,22 @@ const KYC_MESSAGES = {
 const heroTrend = [72, 110, 60, 140, 95, 160]
 
 const humanizeStatus = (status) => status.replace(/_/g, ' ')
+
+const statusToneMap = {
+  APPROVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  REJECTED: 'bg-rose-50 text-rose-700 border border-rose-200',
+  RESUBMIT_REQUIRED: 'bg-amber-50 text-amber-700 border border-amber-200',
+  DISBURSED: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  default: 'bg-slate-50 text-slate-700 border border-slate-200',
+}
+
+const getStatusTone = (status) => statusToneMap[status] || statusToneMap.default
+
+const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    : 'No date'
 
 const Dashboard = () => {
   const [status, setStatus] = useState(API_STATUS.idle)
@@ -84,16 +96,6 @@ const Dashboard = () => {
     loadDashboard()
   }, [bootstrapping, loadDashboard])
 
-
-  if (bootstrapping) {
-    return (
-      <div className="page-center">
-        <Loader />
-      </div>
-    )
-  }
-
-
   const kycStatus = user?.kycStatus || 'PENDING'
   const isKycApproved = kycStatus === 'APPROVED'
   const kycMessage =
@@ -102,29 +104,21 @@ const Dashboard = () => {
 
   const disbursedLoans = useMemo(
     () => state.loans?.filter((loan) => loan.status === 'DISBURSED') || [],
-    [state.loans]
+    [state.loans],
   )
   const pendingLoans = useMemo(
     () => state.loans?.filter((loan) => loan.status === 'PENDING') || [],
-    [state.loans]
+    [state.loans],
   )
   const walletBalance = state.wallet?.balance ?? 0
   const totalBorrowed = disbursedLoans.reduce(
     (sum, loan) => sum + Number(loan.amount || 0),
-    0
+    0,
   )
   const pendingAmount = pendingLoans.reduce(
     (sum, loan) => sum + Number(loan.amount || 0),
-    0
+    0,
   )
-  const averageTenure = disbursedLoans.length
-    ? Math.round(
-        disbursedLoans.reduce(
-          (sum, loan) => sum + Number(loan.tenureMonths || 0),
-          0
-        ) / disbursedLoans.length
-      )
-    : 0
   const assetBase = walletBalance + totalBorrowed
   const borrowUtilization = assetBase
     ? Math.min(100, Math.round((totalBorrowed / assetBase) * 100))
@@ -139,7 +133,7 @@ const Dashboard = () => {
       [...(state.loans || [])]
         .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
         .slice(0, 6),
-    [state.loans]
+    [state.loans],
   )
 
   const lendingOpportunities = useMemo(() => {
@@ -187,9 +181,9 @@ const Dashboard = () => {
     }
   }
 
-  if (status === API_STATUS.loading) {
+  if (bootstrapping || status === API_STATUS.loading) {
     return (
-      <div className="page-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <Loader />
       </div>
     )
@@ -197,319 +191,448 @@ const Dashboard = () => {
 
   if (status === API_STATUS.error) {
     return (
-      <div className="card error-card">
-        <p>{error}</p>
+      <div className="mx-auto max-w-3xl rounded-2xl border border-rose-400/30 bg-rose-500/10 px-6 py-5 text-rose-50 shadow-lg">
+        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-rose-100/80">Dashboard</p>
+        <p className="mt-2 text-lg font-semibold">{error}</p>
       </div>
     )
   }
 
   const heroName = user?.name?.split(' ')[0] || 'Trailblazer'
   const highlightedLoan = loanTimeline[0]
+  const heroStats = [
+    {
+      label: 'Wallet ready',
+      value: CURRENCY_FORMATTER.format(walletBalance),
+      hint: 'Available to deploy',
+    },
+    {
+      label: 'Borrow utilization',
+      value: `${borrowUtilization}%`,
+      hint: 'of your total asset base',
+    },
+    {
+      label: 'Pipeline',
+      value: `${pendingLoans.length} live`,
+      hint: `${CURRENCY_FORMATTER.format(pendingAmount)} awaiting funding`,
+    },
+  ]
 
   return (
-    <div className="dashboard">
-      <section className="dashboard-hero">
-        <div className="hero-copy">
-          <p className="eyebrow">Welcome back, {heroName}</p>
-          <h1>One control room for lending, borrowing & liquidity</h1>
-          <p>
-            Balance your capital, fund other members, or post your next request without switching
-            screens. Everything updates live with your wallet and KYC status.
+    <div className="relative space-y-6 text-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/90 px-5 py-4 shadow-sm">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">
+            Dashboard
           </p>
-          <div className="hero-actions">
-            <Link to="/loans/apply" className="btn btn-primary hero-btn">
-              Borrow now
-            </Link>
-            <Link to="/loans" className="btn btn-secondary hero-btn">
-              Manage portfolio
-            </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900">Hello, {heroName}</h1>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+              Wallet {CURRENCY_FORMATTER.format(walletBalance)}
+            </span>
+            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+              {pendingLoans.length} pending
+            </span>
           </div>
-          <div className="hero-highlights">
-            <div className="hero-highlight">
-              <span>Wallet ready</span>
-              <strong>{CURRENCY_FORMATTER.format(walletBalance)}</strong>
-              <small className="muted">Available to deploy</small>
-            </div>
-            <div className="hero-highlight">
-              <span>Borrow utilization</span>
-              <strong>{borrowUtilization}%</strong>
-              <small className="muted">of your total asset base</small>
-            </div>
-            <div className="hero-highlight">
-              <span>Pipeline</span>
-              <strong>{pendingLoans.length} live</strong>
-              <small className="muted">{CURRENCY_FORMATTER.format(pendingAmount)} awaiting funding</small>
-            </div>
+          <p className="text-sm text-slate-600">
+            Quick view of balances, loans, and requests. Post a new ask or review activity.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to="/loans/apply"
+            className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            New loan request
+          </Link>
+          <Link
+            to="/loans"
+            className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          >
+            View all loans
+          </Link>
+        </div>
+      </div>
+
+      {!isKycApproved && (
+        <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-800 shadow-sm">
+          <div className="space-y-1">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-600">KYC status</p>
+            <h3 className="text-lg font-semibold">{humanizeStatus(kycStatus)}</h3>
+            <p className="max-w-3xl text-sm text-amber-700">{kycMessage}</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {user?.kycReviewUrl && (
+              <a
+                href={user.kycReviewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-amber-200"
+              >
+                Continue in Sumsub
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={handleRefreshKyc}
+              disabled={kycRefreshing}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-800 transition hover:-translate-y-[1px] hover:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {kycRefreshing ? 'Refreshing...' : 'Refresh status'}
+            </button>
           </div>
         </div>
-        <div className="hero-balance">
-          <div className="hero-balance-card">
-            <span>Wallet Balance</span>
-            <strong>{CURRENCY_FORMATTER.format(walletBalance)}</strong>
-            <div className="hero-meta">
-              <p>{CURRENCY_FORMATTER.format(totalBorrowed)} borrowed</p>
-              <p>{pendingLoans.length} loans pending funding</p>
+      )}
+
+      <section className="grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
+        <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-indigo-50 p-6 shadow-lg">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-2">
+              <p className="text-[0.7rem] uppercase tracking-[0.22em] text-slate-500">
+                Welcome back, {heroName}
+              </p>
+              <h1 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">
+                One clear view of your borrowing & lending
+              </h1>
+              <p className="max-w-2xl text-sm text-slate-600">
+                Keep an eye on balances, requests, and approvals without hunting through screens.
+              </p>
             </div>
-            <div className="hero-trend" aria-hidden>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.75rem] text-slate-600 shadow-sm">
+              {isKycApproved ? 'KYC ready' : `KYC: ${humanizeStatus(kycStatus)}`}
+            </span>
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {heroStats.map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+              >
+                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">{stat.label}</p>
+                <p className="mt-1 text-xl font-semibold text-slate-900">{stat.value}</p>
+                <p className="text-xs text-slate-500">{stat.hint}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-lg">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm text-slate-500">Wallet balance</p>
+                <p className="mt-1 text-3xl font-semibold text-slate-900">
+                  {CURRENCY_FORMATTER.format(walletBalance)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-right text-xs text-indigo-700">
+                <p>{CURRENCY_FORMATTER.format(totalBorrowed)} borrowed</p>
+                <p>{pendingLoans.length} loans pending</p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-end gap-1.5">
               {heroTrend.map((height, index) => (
-                <span key={`trend-${index}`} style={{ height: `${height}px` }} />
+                <span
+                  key={`trend-${index}-${height}`}
+                  className="h-14 w-2 rounded-full bg-gradient-to-t from-indigo-200 via-indigo-300 to-sky-200 shadow-[0_6px_16px_rgba(99,102,241,0.18)]"
+                  style={{ height: Math.max(32, height * 0.55) }}
+                />
               ))}
             </div>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+              <span className="rounded-full bg-slate-100 px-2 py-1">Available: {CURRENCY_FORMATTER.format(walletBalance)}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-1">Borrowed: {CURRENCY_FORMATTER.format(totalBorrowed)}</span>
+            </div>
           </div>
+
           {highlightedLoan && (
-            <div className="hero-focus">
-              <p className="eyebrow">Latest motion</p>
-              <h3>{highlightedLoan.purpose || 'Funding request'}</h3>
-              <div className="hero-focus-stats">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-md">
+              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Latest motion</p>
+              <div className="mt-2 flex items-start justify-between gap-3">
                 <div>
-                  <small>Amount</small>
-                  <strong>{CURRENCY_FORMATTER.format(highlightedLoan.amount || 0)}</strong>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    {highlightedLoan.purpose || 'Funding request'}
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    {highlightedLoan.createdAt
+                      ? new Date(highlightedLoan.createdAt).toLocaleDateString()
+                      : 'Awaiting schedule'}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(
+                    highlightedLoan.status,
+                  )}`}
+                >
+                  {humanizeStatus(highlightedLoan.status)}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Amount</p>
+                  <p className="text-base font-semibold text-slate-900">
+                    {CURRENCY_FORMATTER.format(highlightedLoan.amount || 0)}
+                  </p>
                 </div>
                 <div>
-                  <small>Status</small>
-                  <span className={`status-chip status-${highlightedLoan.status}`}>
-                    {highlightedLoan.status}
-                  </span>
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Tenure</p>
+                  <p className="text-base font-semibold text-slate-900">
+                    {highlightedLoan.tenureMonths || '--'} months
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Timeline</p>
+                  <p className="text-base font-semibold text-slate-900">
+                    {formatDate(highlightedLoan.createdAt)}
+                  </p>
                 </div>
               </div>
-              <p className="muted">
-                {highlightedLoan.createdAt
-                  ? new Date(highlightedLoan.createdAt).toLocaleDateString()
-                  : 'Awaiting schedule'}
-              </p>
             </div>
           )}
         </div>
       </section>
 
-      {!isKycApproved && (
-        <section className="card kyc-card elevated-card">
-          <div>
-            <p className="kyc-label">KYC Status</p>
-            <h3>{humanizeStatus(kycStatus)}</h3>
-            <p>{kycMessage}</p>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-slate-600">Total value</p>
+            <span className="rounded-full bg-slate-50 px-3 py-1 text-xs text-slate-600">
+              {disbursedLoans.length} active loans
+            </span>
           </div>
-          <div className="kyc-actions">
-            {user?.kycReviewUrl && (
-              <a
-                href={user.kycReviewUrl}
-                className="btn btn-primary"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Continue in Sumsub
-              </a>
-            )}
-            <Button variant="ghost" onClick={handleRefreshKyc} disabled={kycRefreshing}>
-              {kycRefreshing ? 'Refreshing...' : 'Refresh status'}
-            </Button>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">
+            {CURRENCY_FORMATTER.format(walletBalance + totalBorrowed)}
+          </p>
+          <div className="mt-4 h-2 w-full rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-400"
+              style={{ width: `${borrowUtilization}%` }}
+            />
           </div>
-        </section>
-      )}
+        </article>
 
-      <div className="dashboard-metrics">
-        <article className="metric-card">
-          <p>Total Value</p>
-          <h3>{CURRENCY_FORMATTER.format(walletBalance + totalBorrowed)}</h3>
-          <span>{disbursedLoans.length} active loans</span>
-          <div className="progress" aria-label="Borrow utilization">
-            <span style={{ width: `${borrowUtilization}%` }} />
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-slate-600">Pending funding</p>
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-700">
+              {pendingLoans.length} requests live
+            </span>
           </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">
+            {CURRENCY_FORMATTER.format(pendingAmount)}
+          </p>
+          <p className="text-sm text-slate-500">{pendingShare}% of portfolio</p>
         </article>
-        <article className="metric-card">
-          <p>Pending Funding</p>
-          <h3>{CURRENCY_FORMATTER.format(pendingAmount)}</h3>
-          <span>{pendingShare}% of portfolio</span>
-          <div className="stat-chip">{pendingLoans.length} requests live</div>
-        </article>
-        <article className="metric-card">
-          <p>Average Tenure</p>
-          <h3>{averageTenure || '--'} months</h3>
-          <span>Stay agile with shorter cycles</span>
-          <div className="stat-chip">{pendingLoans.length + disbursedLoans.length} total deals</div>
-        </article>
-        <article className="metric-card">
-          <p>Credit Pulse</p>
-          <h3>{creditHealth}</h3>
-          <span>
+
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-slate-600">Credit pulse</p>
+            <span className="rounded-full bg-slate-50 px-3 py-1 text-xs text-slate-600">
+              {creditHealth}
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">
             {creditHealth === 'Pristine'
-              ? 'Plenty of runway to borrow'
+              ? 'Great runway'
               : creditHealth === 'Healthy'
-              ? 'Utilization is balanced'
-              : 'Time to add liquidity'}
-          </span>
-          <div className="progress progress-alt" aria-label="Credit health">
-            <span style={{ width: `${Math.min(100, borrowUtilization + 20)}%` }} />
+              ? 'Balanced'
+              : 'Add liquidity'}
+          </p>
+          <div className="mt-4 h-2 w-full rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-300 to-rose-300"
+              style={{ width: `${Math.min(100, borrowUtilization + 20)}%` }}
+            />
           </div>
         </article>
       </div>
 
-      <div className="quick-actions">
-        <article className="quick-action-card">
-          <div>
-            <p className="eyebrow">Lend capital</p>
-            <h3>Back a borrower</h3>
-            <p>Deploy idle wallet balance across requests and earn yield instantly.</p>
-          </div>
-          <Link to="/loans" className="ghost-link">
-            Browse loans {'->'}
-          </Link>
-        </article>
-        <article className="quick-action-card">
-          <div>
-            <p className="eyebrow">Borrow</p>
-            <h3>Raise fresh funds</h3>
-            <p>Post a new loan ask with your terms and track approvals in real time.</p>
-          </div>
-          <Link to="/loans/apply" className="ghost-link">
-            Post request {'->'}
-          </Link>
-        </article>
-        <article className="quick-action-card">
-          <div>
-            <p className="eyebrow">Wallet</p>
-            <h3>Keep liquidity ready</h3>
-            <p>Top up the wallet so you can lend faster or cover repayments.</p>
-          </div>
-          <Link to="/wallet" className="ghost-link">
-            View wallet {'->'}
-          </Link>
-        </article>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {[
+          {
+            title: 'Back a borrower',
+            eyebrow: 'Lend capital',
+            copy: 'Deploy idle wallet balance across requests and earn yield instantly.',
+            to: '/loans',
+          },
+          {
+            title: 'Raise fresh funds',
+            eyebrow: 'Borrow',
+            copy: 'Post a new loan ask with your terms and track approvals in real time.',
+            to: '/loans/apply',
+          },
+        ].map((card) => (
+          <article
+            key={card.title}
+            className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-[2px]"
+          >
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+              {card.eyebrow}
+            </p>
+            <h3 className="mt-1 text-lg font-semibold text-slate-900">{card.title}</h3>
+            <p className="text-sm text-slate-600">{card.copy}</p>
+            <Link
+              to={card.to}
+              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 transition group-hover:text-slate-900"
+            >
+              Go now →
+            </Link>
+          </article>
+        ))}
       </div>
 
-      <div className="dashboard-columns">
-        <section className="panel">
-          <div className="panel-header">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="eyebrow">Borrowing radar</p>
-              <h3>Active + pending loans</h3>
+              <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">
+                Borrowing radar
+              </p>
+              <h3 className="text-xl font-semibold text-slate-900">Active + pending loans</h3>
             </div>
-            <Link to="/loans" className="ghost-link">
+            <Link to="/loans" className="text-sm font-semibold text-indigo-700 hover:text-slate-900">
               See all
             </Link>
           </div>
-          <div className="loan-stream">
+          <div className="mt-3 space-y-3">
             {loanTimeline.length ? (
               loanTimeline.map((loan) => (
-                <article key={loan.id || loan.createdAt} className="loan-row">
-                  <div className="loan-row-main">
-                    <h4>{loan.purpose || 'Untitled request'}</h4>
-                    <p className="muted">
-                      {loan.createdAt
-                        ? new Date(loan.createdAt).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                          })
-                        : 'No date'}
-                    </p>
+                <article
+                  key={loan.id || loan.createdAt}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-lg font-semibold text-slate-900">
+                        {loan.purpose || 'Untitled request'}
+                      </h4>
+                      <p className="text-xs text-slate-500">{formatDate(loan.createdAt)}</p>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(
+                        loan.status,
+                      )}`}
+                    >
+                      {humanizeStatus(loan.status)}
+                    </span>
                   </div>
-                  <div className="loan-row-details">
+                  <div className="mt-3 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
                     <div>
-                      <small>Amount</small>
-                      <strong>{CURRENCY_FORMATTER.format(loan.amount || 0)}</strong>
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Amount</p>
+                      <p className="font-semibold text-slate-900">
+                        {CURRENCY_FORMATTER.format(loan.amount || 0)}
+                      </p>
                     </div>
                     <div>
-                      <small>Tenure</small>
-                      <strong>{loan.tenureMonths || '--'}m</strong>
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Tenure</p>
+                      <p className="font-semibold text-slate-900">
+                        {loan.tenureMonths || '--'} months
+                      </p>
                     </div>
                     <div>
-                      <span className={`status-chip status-${loan.status}`}>
-                        {humanizeStatus(loan.status)}
-                      </span>
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Status</p>
+                      <p className="font-semibold text-slate-900">{humanizeStatus(loan.status)}</p>
                     </div>
                   </div>
                 </article>
               ))
             ) : (
-              <p>No loans yet. Post a loan to get started.</p>
+              <p className="text-sm text-slate-600">No loans yet. Post a loan to get started.</p>
             )}
           </div>
         </section>
-        <section className="panel">
-          <div className="panel-header">
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="eyebrow">Marketplace</p>
-              <h3>Lending opportunities</h3>
+              <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">
+                Marketplace
+              </p>
+              <h3 className="text-xl font-semibold text-slate-900">Lending opportunities</h3>
             </div>
-            <Link to="/loans" className="ghost-link">
+            <Link to="/loans" className="text-sm font-semibold text-indigo-700 hover:text-slate-900">
               Fund deals
             </Link>
           </div>
-          <div className="opportunity-grid">
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
             {lendingOpportunities.length ? (
               lendingOpportunities.map((loan, index) => (
-                <article key={`op-${loan.id || index}`} className="opportunity-card">
-                  <div className="opportunity-top">
-                    <span className="badge">{loan.status}</span>
-                    <h4>{loan.purpose || 'General purpose loan'}</h4>
-                    <p>{CURRENCY_FORMATTER.format(loan.amount || 0)}</p>
+                <article
+                  key={`op-${loan.id || index}`}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(
+                        loan.status,
+                      )}`}
+                    >
+                      {humanizeStatus(loan.status)}
+                    </span>
+                    <p className="text-xs text-slate-500">{formatDate(loan.createdAt)}</p>
                   </div>
-                  <div className="opportunity-meta">
+                  <h4 className="mt-2 text-lg font-semibold text-slate-900">
+                    {loan.purpose || 'General purpose loan'}
+                  </h4>
+                  <p className="text-sm text-slate-600">
+                    {CURRENCY_FORMATTER.format(loan.amount || 0)}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-600">
                     <div>
-                      <small>Tenure</small>
-                      <strong>{loan.tenureMonths || '--'} months</strong>
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Tenure</p>
+                      <p className="font-semibold text-slate-900">{loan.tenureMonths || '--'} months</p>
                     </div>
                     <div>
-                      <small>Created</small>
-                      <strong>
-                        {loan.createdAt
-                          ? new Date(loan.createdAt).toLocaleDateString()
-                          : 'N/A'}
-                      </strong>
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Status</p>
+                      <p className="font-semibold text-slate-900">{humanizeStatus(loan.status)}</p>
                     </div>
                   </div>
-                  <Link to="/loans" className="btn btn-primary opportunity-btn">
+                  <Link
+                    to="/loans"
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                  >
                     Lend to this
                   </Link>
                 </article>
               ))
             ) : (
-              <p>No opportunities yet. Invite borrowers to post requests.</p>
+              <p className="text-sm text-slate-600">
+                No opportunities yet. Invite borrowers to post requests.
+              </p>
             )}
           </div>
         </section>
       </div>
 
-      <div className="dashboard-columns secondary">
-        <section className="panel">
-          <div className="panel-header">
+      <div className="grid gap-4">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="eyebrow">Wallet pulse</p>
-              <h3>Liquidity insights</h3>
+              <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">
+                Post a loan
+              </p>
+              <h3 className="text-xl font-semibold text-slate-900">Instant loan listing</h3>
             </div>
-            <Link to="/wallet/transactions" className="ghost-link">
-              See transactions
+            <Link
+              to="/wallet/transactions"
+              className="text-sm font-semibold text-indigo-700 hover:text-slate-900"
+            >
+              Wallet history
             </Link>
           </div>
-          <ul className="wallet-pulse">
-            <li>
-              <span>Available for lending</span>
-              <strong>{CURRENCY_FORMATTER.format(walletBalance)}</strong>
-            </li>
-            <li>
-              <span>Borrow utilization</span>
-              <strong>{borrowUtilization}%</strong>
-            </li>
-            <li>
-              <span>Pending repayments</span>
-              <strong>{pendingLoans.length}</strong>
-            </li>
-          </ul>
-        </section>
-        <section className="panel quick-loan-panel">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Post a loan</p>
-              <h3>Instant loan listing</h3>
-            </div>
-          </div>
           {quickLoanMessage && (
-            <p className={`form-message ${quickLoanStatus === API_STATUS.error ? 'error' : 'success'}`}>
+            <p
+              className={`mt-2 rounded-xl border px-3 py-2 text-sm font-semibold ${
+                quickLoanStatus === API_STATUS.error
+                  ? 'border-rose-200 bg-rose-50 text-rose-700'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              }`}
+            >
               {quickLoanMessage}
             </p>
           )}
-          <form className="quick-loan-form" onSubmit={handleQuickLoanSubmit}>
-            <label htmlFor="quick-amount">
+          <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={handleQuickLoanSubmit}>
+            <label htmlFor="quick-amount" className="space-y-1 text-sm font-semibold text-slate-900">
               Amount
               <input
                 type="number"
@@ -519,10 +642,16 @@ const Dashboard = () => {
                 value={quickLoanValues.amount}
                 onChange={handleQuickLoanChange}
                 placeholder="5000"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100"
               />
-              {quickLoanErrors.amount && <span className="field-error">{quickLoanErrors.amount}</span>}
+              {quickLoanErrors.amount && (
+                <span className="text-xs font-medium text-rose-600">{quickLoanErrors.amount}</span>
+              )}
             </label>
-            <label htmlFor="quick-tenure">
+            <label
+              htmlFor="quick-tenure"
+              className="space-y-1 text-sm font-semibold text-slate-900"
+            >
               Tenure (months)
               <input
                 type="number"
@@ -532,12 +661,18 @@ const Dashboard = () => {
                 value={quickLoanValues.tenureMonths}
                 onChange={handleQuickLoanChange}
                 placeholder="12"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100"
               />
               {quickLoanErrors.tenureMonths && (
-                <span className="field-error">{quickLoanErrors.tenureMonths}</span>
+                <span className="text-xs font-medium text-rose-600">
+                  {quickLoanErrors.tenureMonths}
+                </span>
               )}
             </label>
-            <label htmlFor="quick-purpose" className="full-width">
+            <label
+              htmlFor="quick-purpose"
+              className="space-y-1 text-sm font-semibold text-slate-900 sm:col-span-2"
+            >
               Purpose
               <textarea
                 id="quick-purpose"
@@ -546,13 +681,22 @@ const Dashboard = () => {
                 value={quickLoanValues.purpose}
                 onChange={handleQuickLoanChange}
                 placeholder="Working capital, equipment purchase, ..."
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100"
               />
-              {quickLoanErrors.purpose && <span className="field-error">{quickLoanErrors.purpose}</span>}
+              {quickLoanErrors.purpose && (
+                <span className="text-xs font-medium text-rose-600">
+                  {quickLoanErrors.purpose}
+                </span>
+              )}
             </label>
-            <div className="form-actions full-width">
-              <Button type="submit" disabled={quickLoanStatus === API_STATUS.loading}>
+            <div className="sm:col-span-2">
+              <button
+                type="submit"
+                disabled={quickLoanStatus === API_STATUS.loading}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
                 {quickLoanStatus === API_STATUS.loading ? 'Posting...' : 'Post loan to marketplace'}
-              </Button>
+              </button>
             </div>
           </form>
         </section>
