@@ -24,6 +24,7 @@ const LoginForm = ({ onSubmit, loading }) => {
   const [values, setValues] = useState(initialState)
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const recaptchaRef = useRef(null)
   const isCaptchaEnabled = Boolean(recaptchaSiteKey)
   const isSubmitDisabled = loading || (isCaptchaEnabled && !values.captchaToken)
@@ -130,16 +131,25 @@ const LoginForm = ({ onSubmit, loading }) => {
         <label className="text-sm font-semibold text-slate-800" htmlFor="password">
           Password
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          value={values.password}
-          onChange={handleChange}
-          placeholder="********"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-        />
+        <div className="relative">
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            value={values.password}
+            onChange={handleChange}
+            placeholder="********"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 pr-16 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute inset-y-0 right-0 px-3 text-xs font-semibold text-indigo-700"
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
         {errors.password && (
           <span className="text-xs font-medium text-rose-600">{errors.password}</span>
         )}
