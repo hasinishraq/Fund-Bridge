@@ -32,18 +32,19 @@ export const API_STATUS = {
 }
 
 export const NAV_LINKS = [
-  { to: '/dashboard/borrower', label: 'Dashboard', roles: [ROLE.BORROWER] },
-  { to: '/dashboard/borrower/profile', label: 'Profile', roles: [ROLE.BORROWER] },
-  { to: '/dashboard/lender', label: 'Lender Dashboard', roles: [ROLE.LENDER] },
-  { to: '/loans/apply', label: 'Apply Loan', roles: [ROLE.BORROWER] },
-  { to: '/loans', label: 'My Loans', roles: [ROLE.BORROWER] },
-  { to: '/wallet', label: 'Wallet', roles: [ROLE.BORROWER, ROLE.LENDER] },
+  { to: '/dashboard/borrower', label: 'Dashboard', roles: [ROLE.BORROWER], exact: true },
+  { to: '/dashboard/borrower/profile', label: 'Profile', roles: [ROLE.BORROWER], exact: true },
+  { to: '/dashboard/lender', label: 'Lender Dashboard', roles: [ROLE.LENDER], exact: true },
+  { to: '/loans/apply', label: 'Apply Loan', roles: [ROLE.BORROWER], exact: true },
+  { to: '/loans', label: 'My Loans', roles: [ROLE.BORROWER], exact: true },
+  { to: '/wallet', label: 'Wallet', roles: [ROLE.BORROWER, ROLE.LENDER], exact: true },
   {
     to: '/wallet/transactions',
     label: 'Transactions',
     roles: [ROLE.BORROWER, ROLE.LENDER],
+    exact: true,
   },
-  { to: '/admin', label: 'Admin Dashboard', roles: [ROLE.ADMIN] },
+  { to: '/admin', label: 'Admin Dashboard', roles: [ROLE.ADMIN], exact: true },
 ]
 
 export const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
