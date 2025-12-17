@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import ReCAPTCHA from 'react-google-recaptcha'
-import Button from '../common/Button'
 import { validateLogin } from '../../utils/validators'
 
 const initialState = { email: '', password: '', captchaToken: '' }
@@ -105,12 +104,16 @@ const LoginForm = ({ onSubmit, loading }) => {
   }
 
   return (
-    <form className="card auth-form" onSubmit={handleSubmit} noValidate>
-      <h2>Welcome Back</h2>
-      <p className="auth-form-note">Use your corporate email to access FundBridge securely.</p>
-      {formError && <p className="form-error">{formError}</p>}
-      <label htmlFor="email">
-        Email
+    <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+      {formError && (
+        <p className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+          {formError}
+        </p>
+      )}
+      <div className="space-y-1.5">
+        <label className="text-sm font-semibold text-slate-800" htmlFor="email">
+          Email
+        </label>
         <input
           id="email"
           name="email"
@@ -119,11 +122,14 @@ const LoginForm = ({ onSubmit, loading }) => {
           value={values.email}
           onChange={handleChange}
           placeholder="you@email.com"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
-        {errors.email && <span className="field-error">{errors.email}</span>}
-      </label>
-      <label htmlFor="password">
-        Password
+        {errors.email && <span className="text-xs font-medium text-rose-600">{errors.email}</span>}
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-sm font-semibold text-slate-800" htmlFor="password">
+          Password
+        </label>
         <input
           id="password"
           name="password"
@@ -132,11 +138,14 @@ const LoginForm = ({ onSubmit, loading }) => {
           value={values.password}
           onChange={handleChange}
           placeholder="********"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
-        {errors.password && <span className="field-error">{errors.password}</span>}
-      </label>
+        {errors.password && (
+          <span className="text-xs font-medium text-rose-600">{errors.password}</span>
+        )}
+      </div>
       {isCaptchaEnabled && (
-        <div className="recaptcha-field">
+        <div className="space-y-1.5">
           <ReCAPTCHA
             ref={recaptchaRef}
             sitekey={recaptchaSiteKey}
@@ -144,13 +153,19 @@ const LoginForm = ({ onSubmit, loading }) => {
             onExpired={resetCaptcha}
             onErrored={handleCaptchaError}
           />
-          {errors.captchaToken && <span className="field-error">{errors.captchaToken}</span>}
+          {errors.captchaToken && (
+            <span className="text-xs font-medium text-rose-600">{errors.captchaToken}</span>
+          )}
         </div>
       )}
 
-      <Button type="submit" disabled={isSubmitDisabled}>
-        {loading ? 'Signing in...' : 'Login'}
-      </Button>
+      <button
+        type="submit"
+        disabled={isSubmitDisabled}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {loading ? 'Signing in...' : 'Sign in'}
+      </button>
     </form>
   )
 }

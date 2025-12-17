@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
-import Button from '../common/Button'
 import { validateRegister } from '../../utils/validators'
 import { ROLE } from '../../utils/constants'
 
@@ -77,14 +76,16 @@ const RegisterForm = ({ onSubmit, loading }) => {
   }
 
   return (
-    <form className="card auth-form" onSubmit={handleSubmit} noValidate>
-      <h2>Create Account</h2>
-      <p className="auth-form-note">
-        We will automatically trigger Sumsub KYC so you can verify your identity right away.
-      </p>
-      {formError && <p className="form-error">{formError}</p>}
-      <label htmlFor="name">
-        Full Name
+    <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+      {formError && (
+        <p className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+          {formError}
+        </p>
+      )}
+      <div className="space-y-1.5">
+        <label className="text-sm font-semibold text-slate-800" htmlFor="name">
+          Full name
+        </label>
         <input
           id="name"
           name="name"
@@ -92,12 +93,15 @@ const RegisterForm = ({ onSubmit, loading }) => {
           value={values.name}
           onChange={handleChange}
           placeholder="Jane Doe"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
-        {errors.name && <span className="field-error">{errors.name}</span>}
-      </label>
+        {errors.name && <span className="text-xs font-medium text-rose-600">{errors.name}</span>}
+      </div>
 
-      <label htmlFor="email">
-        Email
+      <div className="space-y-1.5">
+        <label className="text-sm font-semibold text-slate-800" htmlFor="email">
+          Email
+        </label>
         <input
           id="email"
           name="email"
@@ -106,12 +110,15 @@ const RegisterForm = ({ onSubmit, loading }) => {
           value={values.email}
           onChange={handleChange}
           placeholder="you@email.com"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
-        {errors.email && <span className="field-error">{errors.email}</span>}
-      </label>
+        {errors.email && <span className="text-xs font-medium text-rose-600">{errors.email}</span>}
+      </div>
 
-      <label htmlFor="password">
-        Password
+      <div className="space-y-1.5">
+        <label className="text-sm font-semibold text-slate-800" htmlFor="password">
+          Password
+        </label>
         <input
           id="password"
           name="password"
@@ -120,12 +127,17 @@ const RegisterForm = ({ onSubmit, loading }) => {
           value={values.password}
           onChange={handleChange}
           placeholder="********"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
-        {errors.password && <span className="field-error">{errors.password}</span>}
-      </label>
+        {errors.password && (
+          <span className="text-xs font-medium text-rose-600">{errors.password}</span>
+        )}
+      </div>
 
-      <label htmlFor="confirmPassword">
-        Confirm Password
+      <div className="space-y-1.5">
+        <label className="text-sm font-semibold text-slate-800" htmlFor="confirmPassword">
+          Confirm password
+        </label>
         <input
           id="confirmPassword"
           name="confirmPassword"
@@ -134,25 +146,40 @@ const RegisterForm = ({ onSubmit, loading }) => {
           value={values.confirmPassword}
           onChange={handleChange}
           placeholder="********"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
-        {errors.confirmPassword && <span className="field-error">{errors.confirmPassword}</span>}
-      </label>
+        {errors.confirmPassword && (
+          <span className="text-xs font-medium text-rose-600">{errors.confirmPassword}</span>
+        )}
+      </div>
 
-      <label htmlFor="role">
-        Registering as
-        <select id="role" name="role" value={values.role} onChange={handleChange}>
+      <div className="space-y-1.5">
+        <label className="text-sm font-semibold text-slate-800" htmlFor="role">
+          Registering as
+        </label>
+        <select
+          id="role"
+          name="role"
+          value={values.role}
+          onChange={handleChange}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+        >
           {ROLE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
-        {errors.role && <span className="field-error">{errors.role}</span>}
-      </label>
+        {errors.role && <span className="text-xs font-medium text-rose-600">{errors.role}</span>}
+      </div>
 
-      <Button type="submit" disabled={loading}>
-        {loading ? 'Creating account...' : 'Register'}
-      </Button>
+      <button
+        type="submit"
+        disabled={loading}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {loading ? 'Creating account...' : 'Create account'}
+      </button>
     </form>
   )
 }
