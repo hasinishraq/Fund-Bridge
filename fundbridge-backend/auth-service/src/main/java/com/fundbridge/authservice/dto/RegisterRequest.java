@@ -19,6 +19,9 @@ public record RegisterRequest(
 
         UserRole role,
 
+        @NotBlank(message = "OTP is required")
+        String otp,
+
         @Size(max = 4096, message = "Captcha token is invalid")
         String captchaToken
 ) {

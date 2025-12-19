@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: ${AUTH_DB_URL:jdbc:mysql://localhost:3306/fundbridge?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+    url: ${AUTH_DB_URL:jdbc:mysql://localhost:3306/auth_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
     username: ${AUTH_DB_USERNAME:}
     password: ${AUTH_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -21,6 +21,7 @@ security:
     secret: ${AUTH_JWT_SECRET:a8f1e0c4b2d6f7890a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef}
     # Default to 1h if not provided; must stay >= 60s due to validation.
     expirationSeconds: ${AUTH_JWT_EXPIRATION_SECONDS:3600}
+    refreshExpirationSeconds: ${AUTH_JWT_REFRESH_EXPIRATION_SECONDS:2592000}
 
 app:
   cors:
@@ -35,6 +36,14 @@ app:
     secret-key: ${AUTH_RECAPTCHA_SECRET_KEY:}
     verify-url: ${AUTH_RECAPTCHA_VERIFY_URL:https://www.google.com/recaptcha/api/siteverify}
     minimum-score: ${AUTH_RECAPTCHA_MIN_SCORE:0.5}
+
+brevo:
+  enabled: ${BREVO_ENABLED:true}
+  api-key: ${BREVO_API_KEY:}
+  base-url: ${BREVO_BASE_URL:https://api.brevo.com}
+  from-email: ${BREVO_FROM_EMAIL:no-reply@auth.local}
+  from-name: ${BREVO_FROM_NAME:FundBridge}
+  otp-subject: ${BREVO_OTP_SUBJECT:Your FundBridge verification code}
 
 sumsub:
   enabled: ${SUMSUB_ENABLED:true}

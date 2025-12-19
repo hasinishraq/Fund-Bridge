@@ -1,12 +1,10 @@
 package com.fundbridge.authservice.controller;
 
-import com.fundbridge.authservice.dto.AuthResponse;
-import com.fundbridge.authservice.dto.LoginRequest;
-import com.fundbridge.authservice.dto.RegisterRequest;
-import com.fundbridge.authservice.dto.UserResponse;
+import com.fundbridge.authservice.dto.*;
 import com.fundbridge.authservice.security.UserPrincipal;
 import com.fundbridge.authservice.service.AuthService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,14 +28,25 @@ public class AuthController {
         this.authService = authService;
     }
 
+    @PostMapping("/register/otp")
+    public ResponseEntity<Void> sendRegistrationOtp(@Valid @RequestBody SendOtpRequest request) {
+        authService.sendRegistrationOtp(request);
+        return ResponseEntity.accepted().build();
+    }
+
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(authService.login(request, httpRequest));
+    }
+
+    @PostMapping("/token/refresh")
+    public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
     }
 
     @GetMapping("/me")
