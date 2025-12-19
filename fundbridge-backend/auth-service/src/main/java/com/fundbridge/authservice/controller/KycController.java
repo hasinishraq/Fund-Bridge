@@ -40,7 +40,7 @@ public class KycController {
     }
 
     private CreateApplicantRequest resolveRequest(UserPrincipal principal, CreateApplicantRequest request) {
-        if (principal != null && principal.getUser().getRole() == UserRole.ADMIN) {
+        if (principal != null && principal.getUser().getPrimaryRole() == UserRole.ADMIN) {
             return request;
         }
         if (principal == null) {

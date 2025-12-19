@@ -3,27 +3,35 @@ package com.fundbridge.authservice.entity;
 import jakarta.persistence.*;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 @Entity
-@Table(name = "users")
+@Table(name = "auth_users",
+        uniqueConstraints = @UniqueConstraint(name = "uq_auth_users_email", columnNames = "email"))
 public class UserAccount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 191)
     private String name;
 
     @Column(nullable = false, unique = true, length = 191)
     private String email;
 
-    @Column(nullable = false, length = 120)
-    private String password;
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
+
+    @Column(name = "is_email_verified", nullable = false)
+    private boolean emailVerified = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 40)
-    private UserRole role = UserRole.BORROWER;
+    @Column(name = "status", nullable = false, length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "kyc_status", nullable = false, length = 32)
@@ -41,10 +49,19 @@ public class UserAccount {
     @Embedded
     private UserSettings settings = new UserSettings();
 
-    @Column(nullable = false, updatable = false)
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "auth_user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id"),
+            uniqueConstraints = @UniqueConstraint(name = "pk_auth_user_roles", columnNames = {"user_id", "role_id"})
+    )
+    private Set<AuthRole> roles = new HashSet<>();
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
     @PrePersist
@@ -89,20 +106,28 @@ public class UserAccount {
         this.email = email;
     }
 
-    public String getPassword() {
-        return password;
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
-    public UserRole getRole() {
-        return role;
+    public boolean isEmailVerified() {
+        return emailVerified;
     }
 
-    public void setRole(UserRole role) {
-        this.role = role;
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
+    }
+
+    public UserStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(UserStatus status) {
+        this.status = status;
     }
 
     public KycStatus getKycStatus() {
@@ -143,6 +168,23 @@ public class UserAccount {
 
     public void setSettings(UserSettings settings) {
         this.settings = settings;
+    }
+
+    public Set<AuthRole> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(Set<AuthRole> roles) {
+        this.roles = roles;
+    }
+
+    public void assignRole(AuthRole role) {
+        this.roles = role == null ? new HashSet<>() : new HashSet<>(Set.of(role));
+    }
+
+    public UserRole getPrimaryRole() {
+        return roles == null ? UserRole.BORROWER :
+                roles.stream().map(AuthRole::getName).filter(Objects::nonNull).findFirst().orElse(UserRole.BORROWER);
     }
 
     public Instant getCreatedAt() {

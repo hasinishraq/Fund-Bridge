@@ -25,7 +25,7 @@ export const validateLogin = ({ email, password, captchaToken }, options = {}) =
 const ALLOWED_REGISTER_ROLES = [ROLE.BORROWER, ROLE.LENDER]
 
 export const validateRegister = (
-  { name, email, password, confirmPassword, role, captchaToken },
+  { name, email, password, confirmPassword, role, otp, captchaToken },
   options = {},
 ) => {
   const { requireCaptcha = false } = options
@@ -44,6 +44,9 @@ export const validateRegister = (
   }
   if (!ALLOWED_REGISTER_ROLES.includes(role)) {
     errors.role = 'Select a valid role'
+  }
+  if (!isRequired(otp)) {
+    errors.otp = 'Enter the verification code sent to your email'
   }
   if (requireCaptcha && !isRequired(captchaToken)) {
     errors.captchaToken = 'Please complete the captcha challenge'
