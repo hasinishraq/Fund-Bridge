@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import ReCAPTCHA from 'react-google-recaptcha'
-import { validateRegister } from '../../utils/validators'
+import { requestRegistrationOtp } from '../../api/authApi'
+import { isEmailValid, validateRegister } from '../../utils/validators'
 import { ROLE } from '../../utils/constants'
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
@@ -12,6 +13,7 @@ const initialState = {
   password: '',
   confirmPassword: '',
   role: ROLE.BORROWER,
+  otp: '',
   captchaToken: '',
 }
 
@@ -41,6 +43,8 @@ const RegisterForm = ({ onSubmit, loading }) => {
   const recaptchaRef = useRef(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [otpSending, setOtpSending] = useState(false)
+  const [otpStatus, setOtpStatus] = useState('')
   const isCaptchaEnabled = Boolean(recaptchaSiteKey)
   const isSubmitDisabled = loading || (isCaptchaEnabled && !values.captchaToken)
 
@@ -85,6 +89,36 @@ const RegisterForm = ({ onSubmit, loading }) => {
     }))
   }
 
+  const handleSendOtp = async () => {
+    const nextErrors = { ...errors }
+    if (!isEmailValid(values.email)) {
+      nextErrors.email = 'Enter a valid email'
+    }
+    if (isCaptchaEnabled && !values.captchaToken) {
+      nextErrors.captchaToken = 'Please complete the captcha challenge to request a code'
+    }
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) {
+      return
+    }
+    try {
+      setFormError('')
+      setOtpStatus('')
+      setOtpSending(true)
+      await requestRegistrationOtp({
+        email: values.email.trim().toLowerCase(),
+        captchaToken: values.captchaToken,
+      })
+      setOtpStatus('Verification code sent to your email.')
+    } catch (error) {
+      const message =
+        error?.response?.data?.message || error?.message || 'Unable to send code. Please try again.'
+      setFormError(message)
+    } finally {
+      setOtpSending(false)
+    }
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     const validationErrors = validateRegister(values, { requireCaptcha: isCaptchaEnabled })
@@ -99,6 +133,7 @@ const RegisterForm = ({ onSubmit, loading }) => {
         email: values.email.trim().toLowerCase(),
         password: values.password,
         role: values.role,
+        otp: values.otp.trim(),
         captchaToken: values.captchaToken,
       })
       const reviewUrl = result?.user?.kycReviewUrl
@@ -160,6 +195,33 @@ const RegisterForm = ({ onSubmit, loading }) => {
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
         {errors.email && <span className="text-xs font-medium text-rose-600">{errors.email}</span>}
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-semibold text-slate-800" htmlFor="otp">
+            Email verification code
+          </label>
+          <button
+            type="button"
+            onClick={handleSendOtp}
+            disabled={otpSending || loading}
+            className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {otpSending ? 'Sending...' : 'Send code'}
+          </button>
+        </div>
+        <input
+          id="otp"
+          name="otp"
+          type="text"
+          value={values.otp}
+          onChange={handleChange}
+          placeholder="6-digit code"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+        />
+        {errors.otp && <span className="text-xs font-medium text-rose-600">{errors.otp}</span>}
+        {otpStatus && <span className="text-xs font-medium text-emerald-600">{otpStatus}</span>}
       </div>
 
       <div className="space-y-1.5">

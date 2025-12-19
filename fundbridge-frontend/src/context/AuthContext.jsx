@@ -4,6 +4,7 @@ import * as authApi from '../api/authApi'
 
 const STORAGE_KEYS = {
   token: 'fb_token',
+  refreshToken: 'fb_refresh_token',
   user: 'fb_user',
 }
 
@@ -20,16 +21,18 @@ const readStoredUser = () => {
   }
 }
 
-const persistAuth = ({ token, user }) => {
-  if (!token || !user) {
+const persistAuth = ({ token, refreshToken, user }) => {
+  if (!token || !refreshToken || !user) {
     throw new Error('Invalid auth payload')
   }
   localStorage.setItem(STORAGE_KEYS.token, token)
+  localStorage.setItem(STORAGE_KEYS.refreshToken, refreshToken)
   localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user))
 }
 
 const clearStoredAuth = () => {
   localStorage.removeItem(STORAGE_KEYS.token)
+  localStorage.removeItem(STORAGE_KEYS.refreshToken)
   localStorage.removeItem(STORAGE_KEYS.user)
 }
 
@@ -40,7 +43,8 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem(STORAGE_KEYS.token)
-    if (!token) {
+    const refreshToken = localStorage.getItem(STORAGE_KEYS.refreshToken)
+    if (!token && !refreshToken) {
       setBootstrapping(false)
       return
     }
@@ -48,10 +52,19 @@ export const AuthProvider = ({ children }) => {
     let cancelled = false
     const loadProfile = async () => {
       try {
-        const profile = await authApi.fetchProfile()
-        if (cancelled) return
-        localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(profile))
-        setUser(profile)
+        if (token) {
+          const profile = await authApi.fetchProfile()
+          if (cancelled) return
+          localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(profile))
+          setUser(profile)
+          return
+        }
+        if (refreshToken) {
+          const refreshed = await authApi.refreshSession({ refreshToken })
+          if (cancelled) return
+          persistAuth(refreshed)
+          setUser(refreshed.user)
+        }
       } catch (error) {
         console.error('Unable to fetch profile', error)
         clearStoredAuth()
@@ -71,8 +84,8 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  const handleAuthSuccess = useCallback(({ token, user: nextUser }) => {
-    persistAuth({ token, user: nextUser })
+  const handleAuthSuccess = useCallback(({ token, refreshToken, user: nextUser }) => {
+    persistAuth({ token, refreshToken, user: nextUser })
     setUser(nextUser)
   }, [])
 

@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -32,6 +34,18 @@ public class GlobalExceptionHandler {
                                                          HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiError.of("Invalid credentials", HttpStatus.UNAUTHORIZED, request.getRequestURI()));
+    }
+
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<ApiError> handleLocked(LockedException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.LOCKED)
+                .body(ApiError.of("Account is locked", HttpStatus.LOCKED, request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiError> handleDisabled(DisabledException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiError.of("Account is disabled", HttpStatus.FORBIDDEN, request.getRequestURI()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -69,6 +83,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException exception, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiError.of(exception.getMessage(), HttpStatus.NOT_FOUND, request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidOtpException.class)
+    public ResponseEntity<ApiError> handleOtp(InvalidOtpException exception, HttpServletRequest request) {
+        List<ValidationError> errors = List.of(new ValidationError("otp", exception.getMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiError.withErrors(exception.getMessage(), HttpStatus.BAD_REQUEST, request.getRequestURI(), errors));
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ApiError> handleInvalidToken(InvalidTokenException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiError.of(exception.getMessage(), HttpStatus.UNAUTHORIZED, request.getRequestURI()));
     }
 
     @ExceptionHandler(Exception.class)

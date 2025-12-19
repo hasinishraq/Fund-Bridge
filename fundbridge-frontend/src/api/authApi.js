@@ -13,12 +13,15 @@ import client from './client'
  * });
  */
 
-const normalizeAuthResponse = ({ token, user }) => ({
+const normalizeAuthResponse = ({ token, refreshToken, user }) => ({
   token,
+  refreshToken,
   user: {
     id: user?.id,
     name: user?.name,
     email: user?.email,
+    emailVerified: user?.emailVerified,
+    status: user?.status,
     role: user?.role,
     kycApplicantId: user?.kycApplicantId,
     kycStatus: user?.kycStatus,
@@ -35,12 +38,20 @@ export const login = async ({ email, password, captchaToken }) => {
   return normalizeAuthResponse(data)
 }
 
-export const register = async ({ name, email, password, role, captchaToken }) => {
+export const requestRegistrationOtp = async ({ email, captchaToken }) => {
+  await client.post('/auth/register/otp', {
+    email,
+    captchaToken,
+  })
+}
+
+export const register = async ({ name, email, password, role, otp, captchaToken }) => {
   const { data } = await client.post('/auth/register', {
     name,
     email,
     password,
     role,
+    otp,
     captchaToken,
   })
   return normalizeAuthResponse(data)
@@ -49,4 +60,9 @@ export const register = async ({ name, email, password, role, captchaToken }) =>
 export const fetchProfile = async () => {
   const { data } = await client.get('/auth/me')
   return data
+}
+
+export const refreshSession = async ({ refreshToken }) => {
+  const { data } = await client.post('/auth/token/refresh', { refreshToken })
+  return normalizeAuthResponse(data)
 }
