@@ -11,6 +11,8 @@ public record JwtProperties(
         @NotBlank
         String secret,
         @Min(60)
-        long expirationSeconds
+        long expirationSeconds,
+        @Min(300)
+        long refreshExpirationSeconds
 ) {
 }

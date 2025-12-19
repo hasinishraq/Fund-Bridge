@@ -2,6 +2,7 @@ package com.fundbridge.authservice.security;
 
 import com.fundbridge.authservice.entity.UserAccount;
 import com.fundbridge.authservice.entity.UserRole;
+import com.fundbridge.authservice.entity.UserStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -9,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class UserPrincipal implements UserDetails {
 
@@ -28,13 +30,17 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        UserRole role = user.getRole();
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            return List.of(new SimpleGrantedAuthority("ROLE_" + user.getPrimaryRole().name()));
+        }
+        return user.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().name()))
+                .collect(Collectors.toSet());
     }
 
     @Override
     public String getPassword() {
-        return user.getPassword();
+        return user.getPasswordHash();
     }
 
     @Override
@@ -49,7 +55,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return user.getStatus() != UserStatus.LOCKED;
     }
 
     @Override
@@ -59,7 +65,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return user.getStatus() != UserStatus.DISABLED;
     }
 
     @Override
