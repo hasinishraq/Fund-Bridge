@@ -1,5 +1,6 @@
 com\fundbridge\authservice\dto\SendOtpRequest.class
 com\fundbridge\authservice\config\HttpClientConfig.class
+com\fundbridge\authservice\dto\RegisterInitRequest.class
 com\fundbridge\authservice\kyc\KycApplicationService.class
 com\fundbridge\authservice\config\BrevoProperties.class
 com\fundbridge\authservice\controller\KycController.class

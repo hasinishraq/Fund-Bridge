@@ -1,7 +1,16 @@
 package com.fundbridge.authservice.service;
 
-import com.fundbridge.authservice.dto.*;
-import com.fundbridge.authservice.entity.*;
+import com.fundbridge.authservice.dto.AuthResponse;
+import com.fundbridge.authservice.dto.LoginRequest;
+import com.fundbridge.authservice.dto.RefreshTokenRequest;
+import com.fundbridge.authservice.dto.RegisterInitRequest;
+import com.fundbridge.authservice.dto.RegisterRequest;
+import com.fundbridge.authservice.dto.TokenResult;
+import com.fundbridge.authservice.dto.UserResponse;
+import com.fundbridge.authservice.entity.UserAccount;
+import com.fundbridge.authservice.entity.UserRole;
+import com.fundbridge.authservice.entity.UserSettings;
+import com.fundbridge.authservice.entity.UserStatus;
 import com.fundbridge.authservice.exception.ResourceConflictException;
 import com.fundbridge.authservice.kyc.KycApplicationService;
 import com.fundbridge.authservice.kyc.dto.CreateApplicantRequest;
@@ -56,7 +65,7 @@ public class AuthService {
     }
 
     @Transactional
-    public void sendRegistrationOtp(SendOtpRequest request) {
+    public void startRegistration(RegisterInitRequest request) {
         recaptchaService.verify(request.captchaToken());
         String normalizedEmail = normalizeEmail(request.email());
         if (userService.existsByEmail(normalizedEmail)) {
@@ -66,8 +75,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
-        recaptchaService.verify(request.captchaToken());
+    public AuthResponse completeRegistration(RegisterRequest request) {
         String normalizedEmail = normalizeEmail(request.email());
         if (userService.existsByEmail(normalizedEmail)) {
             throw new ResourceConflictException("Email already registered");
