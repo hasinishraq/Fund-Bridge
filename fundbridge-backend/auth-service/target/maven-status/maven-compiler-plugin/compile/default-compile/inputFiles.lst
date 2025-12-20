@@ -44,6 +44,7 @@ G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\jav
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\repository\OtpCodeRepository.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\config\BrevoProperties.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\security\JwtAuthenticationFilter.java
+G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\dto\RegisterInitRequest.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\service\TokenService.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\dto\RefreshTokenRequest.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\dto\TokenPair.java

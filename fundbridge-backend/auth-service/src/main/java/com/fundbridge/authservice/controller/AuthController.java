@@ -1,6 +1,11 @@
 package com.fundbridge.authservice.controller;
 
-import com.fundbridge.authservice.dto.*;
+import com.fundbridge.authservice.dto.AuthResponse;
+import com.fundbridge.authservice.dto.LoginRequest;
+import com.fundbridge.authservice.dto.RefreshTokenRequest;
+import com.fundbridge.authservice.dto.RegisterInitRequest;
+import com.fundbridge.authservice.dto.RegisterRequest;
+import com.fundbridge.authservice.dto.UserResponse;
 import com.fundbridge.authservice.security.UserPrincipal;
 import com.fundbridge.authservice.service.AuthService;
 import jakarta.validation.Valid;
@@ -28,15 +33,15 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/register/otp")
-    public ResponseEntity<Void> sendRegistrationOtp(@Valid @RequestBody SendOtpRequest request) {
-        authService.sendRegistrationOtp(request);
+    @PostMapping("/register/init")
+    public ResponseEntity<Void> startRegistration(@Valid @RequestBody RegisterInitRequest request) {
+        authService.startRegistration(request);
         return ResponseEntity.accepted().build();
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    @PostMapping("/register/complete")
+    public ResponseEntity<AuthResponse> completeRegistration(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.completeRegistration(request));
     }
 
     @PostMapping("/login")

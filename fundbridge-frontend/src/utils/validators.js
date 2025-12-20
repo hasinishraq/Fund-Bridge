@@ -28,7 +28,7 @@ export const validateRegister = (
   { name, email, password, confirmPassword, role, otp, captchaToken },
   options = {},
 ) => {
-  const { requireCaptcha = false } = options
+  const { requireCaptcha = false, requireOtp = true } = options
   const errors = {}
   if (!isRequired(name)) {
     errors.name = 'Name is required'
@@ -45,7 +45,7 @@ export const validateRegister = (
   if (!ALLOWED_REGISTER_ROLES.includes(role)) {
     errors.role = 'Select a valid role'
   }
-  if (!isRequired(otp)) {
+  if (requireOtp && !isRequired(otp)) {
     errors.otp = 'Enter the verification code sent to your email'
   }
   if (requireCaptcha && !isRequired(captchaToken)) {
