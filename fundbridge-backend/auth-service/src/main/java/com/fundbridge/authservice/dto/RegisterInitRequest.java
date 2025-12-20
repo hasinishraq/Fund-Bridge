@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record RegisterRequest(
+public record RegisterInitRequest(
         @NotBlank(message = "Name is required")
         String name,
 
@@ -19,7 +19,7 @@ public record RegisterRequest(
 
         UserRole role,
 
-        @NotBlank(message = "OTP is required")
-        String otp
+        @Size(max = 4096, message = "Captcha token is invalid")
+        String captchaToken
 ) {
 }
