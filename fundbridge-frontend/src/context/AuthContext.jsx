@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }) => {
     async (payload) => {
       setLoading(true)
       try {
-        const data = await authApi.register(payload)
+        const data = await authApi.completeRegistration(payload)
         handleAuthSuccess(data)
         return data
       } finally {

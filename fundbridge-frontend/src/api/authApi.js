@@ -38,21 +38,23 @@ export const login = async ({ email, password, captchaToken }) => {
   return normalizeAuthResponse(data)
 }
 
-export const requestRegistrationOtp = async ({ email, captchaToken }) => {
-  await client.post('/auth/register/otp', {
+export const startRegistration = async ({ name, email, password, role, captchaToken }) => {
+  await client.post('/auth/register/init', {
+    name,
     email,
+    password,
+    role,
     captchaToken,
   })
 }
 
-export const register = async ({ name, email, password, role, otp, captchaToken }) => {
-  const { data } = await client.post('/auth/register', {
+export const completeRegistration = async ({ name, email, password, role, otp }) => {
+  const { data } = await client.post('/auth/register/complete', {
     name,
     email,
     password,
     role,
     otp,
-    captchaToken,
   })
   return normalizeAuthResponse(data)
 }
