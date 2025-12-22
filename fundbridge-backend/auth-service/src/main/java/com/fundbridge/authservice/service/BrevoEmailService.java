@@ -41,6 +41,17 @@ public class BrevoEmailService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("api-key", brevoProperties.getApiKey());
 
+            String htmlContent = "<div style=\"font-family: Arial, sans-serif; color: #1f2933;\">" +
+                    "<p>Your FundBridge verification code is:</p>" +
+                    "<div style=\"font-size: 24px; font-weight: 700; letter-spacing: 2px; " +
+                    "padding: 12px 16px; border: 1px solid #e5e7eb; display: inline-block;\">" +
+                    otp +
+                    "</div>" +
+                    "<p>This code will expire in " + ttlMinutes + " minutes.</p>" +
+                    "<p>If you did not request this, please ignore this email.</p>" +
+                    "<p>Thanks,<br/>FundBridge Team</p>" +
+                    "</div>";
+
             Map<String, Object> payload = Map.of(
                     "sender", Map.of(
                             "email", brevoProperties.getFromEmail(),
@@ -48,8 +59,7 @@ public class BrevoEmailService {
                     ),
                     "to", List.of(Map.of("email", recipientEmail)),
                     "subject", brevoProperties.getOtpSubject(),
-                    "htmlContent", "<p>Your verification code is <strong>" + otp + "</strong>. " +
-                            "It expires in " + ttlMinutes + " minutes.</p>"
+                    "htmlContent", htmlContent
             );
 
             restTemplate.postForEntity(brevoProperties.getBaseUrl() + "/v3/smtp/email",
