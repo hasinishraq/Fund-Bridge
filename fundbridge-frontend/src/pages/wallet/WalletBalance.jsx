@@ -1,11 +1,65 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchWalletBalance, topUpWallet } from '../../api/walletApi'
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
+import { createStripeTopUpIntent, fetchWalletBalance } from '../../api/walletApi'
 import Loader from '../../components/common/Loader'
 import { API_STATUS, CURRENCY_FORMATTER } from '../../utils/constants'
 import { useAuth } from '../../context/AuthContext'
 
 const QUICK_AMOUNTS = [100, 250, 500, 1000]
+const buildIdempotencyKey = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `wallet-${Date.now()}`
+
+const StripePaymentForm = ({ intent, onSuccess, onError }) => {
+  const stripe = useStripe()
+  const elements = useElements()
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    if (!stripe || !elements) {
+      onError?.('Stripe is still loading. Please try again.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+        confirmParams: {
+          return_url: window.location.href,
+        },
+      })
+      if (error) {
+        onError?.(error.message || 'Unable to confirm payment')
+        return
+      }
+      if (paymentIntent?.status === 'succeeded') {
+        onSuccess?.(paymentIntent)
+      } else {
+        onError?.(`Payment status: ${paymentIntent?.status ?? 'unknown'}`)
+      }
+    } catch (err) {
+      onError?.('Unable to confirm payment right now')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <PaymentElement id="wallet-payment-element" options={{ layout: 'tabs' }} />
+      <button
+        type="submit"
+        disabled={submitting || !stripe || !elements}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {submitting ? 'Confirming...' : `Pay ${CURRENCY_FORMATTER.format(intent?.amount ?? 0)}`}
+      </button>
+    </form>
+  )
+}
 
 const WalletBalance = () => {
   const [wallet, setWallet] = useState(null)
@@ -13,6 +67,8 @@ const WalletBalance = () => {
   const [status, setStatus] = useState(API_STATUS.loading)
   const [formStatus, setFormStatus] = useState(API_STATUS.idle)
   const [formMessage, setFormMessage] = useState('')
+  const [stripeIntent, setStripeIntent] = useState(null)
+  const [idempotencyKey, setIdempotencyKey] = useState(() => buildIdempotencyKey())
   const { user, bootstrapping } = useAuth()
 
   const loadWallet = async ({ silent = false } = {}) => {
@@ -42,6 +98,25 @@ const WalletBalance = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapping, user?.id])
 
+  const stripePromise = useMemo(
+    () => (stripeIntent?.publishableKey ? loadStripe(stripeIntent.publishableKey) : null),
+    [stripeIntent?.publishableKey],
+  )
+
+  const handlePaymentSuccess = async () => {
+    setFormStatus(API_STATUS.success)
+    setFormMessage('Payment succeeded. Updating wallet balance...')
+    await loadWallet({ silent: true })
+    setStripeIntent(null)
+    setAmount('')
+    setIdempotencyKey(buildIdempotencyKey())
+  }
+
+  const handlePaymentError = (message) => {
+    setFormStatus(API_STATUS.error)
+    setFormMessage(message || 'Unable to complete payment')
+  }
+
   const handleTopUp = async (event) => {
     event.preventDefault()
     const numericAmount = Number(amount)
@@ -51,21 +126,36 @@ const WalletBalance = () => {
       return
     }
     setFormStatus(API_STATUS.loading)
-    setFormMessage('')
+    setFormMessage('Opening secure payment sheet...')
+    setStripeIntent(null)
     try {
-      await topUpWallet({
+      const response = await createStripeTopUpIntent({
         amount: numericAmount,
         userId: user?.id,
         currency: wallet?.currency,
+        idempotencyKey,
+        referenceId: `wallet-topup-${idempotencyKey}`,
       })
-      setAmount('')
+      if (response?.walletTransactionId && response?.status === 'SUCCEEDED') {
+        setFormStatus(API_STATUS.success)
+        setFormMessage('Payment already captured. Refreshing balance...')
+        await loadWallet({ silent: true })
+        setStripeIntent(null)
+        setAmount('')
+        setIdempotencyKey(buildIdempotencyKey())
+        return
+      }
+      setStripeIntent(response)
       setFormStatus(API_STATUS.success)
-      setFormMessage('Wallet funded successfully')
-      await loadWallet({ silent: true })
+      setFormMessage('Card entry ready. Complete payment to fund your wallet.')
     } catch (error) {
       console.error(error)
       setFormStatus(API_STATUS.error)
-      setFormMessage('Unable to top up wallet right now')
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Unable to start card payment right now'
+      setFormMessage(message)
     }
   }
 
@@ -180,7 +270,11 @@ const WalletBalance = () => {
                   min="1"
                   step="0.01"
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) => {
+                    setAmount(event.target.value)
+                    setStripeIntent(null)
+                    setIdempotencyKey(buildIdempotencyKey())
+                  }}
                   placeholder="Enter amount"
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-16 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 />
@@ -195,7 +289,11 @@ const WalletBalance = () => {
                 <button
                   type="button"
                   key={value}
-                  onClick={() => setAmount(String(value))}
+                  onClick={() => {
+                    setAmount(String(value))
+                    setStripeIntent(null)
+                    setIdempotencyKey(buildIdempotencyKey())
+                  }}
                   className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800"
                 >
                   +{CURRENCY_FORMATTER.format(value)}
@@ -223,6 +321,27 @@ const WalletBalance = () => {
               </p>
             )}
           </form>
+
+          {stripeIntent?.clientSecret && stripePromise && (
+            <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">
+                Secure card payment (Stripe)
+              </p>
+              <Elements
+                stripe={stripePromise}
+                options={{
+                  clientSecret: stripeIntent.clientSecret,
+                  appearance: { theme: 'stripe' },
+                }}
+              >
+                <StripePaymentForm
+                  intent={stripeIntent}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                />
+              </Elements>
+            </div>
+          )}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

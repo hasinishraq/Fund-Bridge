@@ -20,6 +20,11 @@ wallet:
   demo-user-id: ${WALLET_DEFAULT_USER_ID:1}
   data-encryption-key: ${WALLET_DATA_ENCRYPTION_KEY:}
 
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+
 storage:
   provider: ${STORAGE_PROVIDER:local}
   endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
