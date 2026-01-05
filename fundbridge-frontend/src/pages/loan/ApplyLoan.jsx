@@ -109,7 +109,7 @@ const ApplyLoan = () => {
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-16 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 />
                 <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-sm font-semibold text-slate-500">
-                  USD
+                  BDT
                 </span>
               </div>
               {errors.amount && (

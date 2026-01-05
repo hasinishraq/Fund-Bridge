@@ -2,12 +2,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { createStripeTopUpIntent, fetchWalletBalance } from '../../api/walletApi'
+import {
+  createSslcommerzTopUpIntent,
+  createStripeTopUpIntent,
+  fetchWalletBalance,
+  validateSslcommerzPayment,
+} from '../../api/walletApi'
 import Loader from '../../components/common/Loader'
 import { API_STATUS, CURRENCY_FORMATTER } from '../../utils/constants'
 import { useAuth } from '../../context/AuthContext'
 
 const QUICK_AMOUNTS = [100, 250, 500, 1000]
+const PAYMENT_METHODS = {
+  SSLCOMMERZ: 'sslcommerz',
+  CARD: 'card',
+}
 const buildIdempotencyKey = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `wallet-${Date.now()}`
 
@@ -67,9 +76,18 @@ const WalletBalance = () => {
   const [status, setStatus] = useState(API_STATUS.loading)
   const [formStatus, setFormStatus] = useState(API_STATUS.idle)
   const [formMessage, setFormMessage] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS.SSLCOMMERZ)
+  const [sslIntent, setSslIntent] = useState(null)
+  const [sslConfirming, setSslConfirming] = useState(false)
   const [stripeIntent, setStripeIntent] = useState(null)
   const [idempotencyKey, setIdempotencyKey] = useState(() => buildIdempotencyKey())
   const { user, bootstrapping } = useAuth()
+
+  const currency = wallet?.currency || 'BDT'
+  const sslMinAmount = 10
+  const cardMinAmount = useMemo(() => {
+    return currency === 'BDT' ? 60 : 1
+  }, [currency])
 
   const loadWallet = async ({ silent = false } = {}) => {
     if (!user?.id) {
@@ -108,6 +126,8 @@ const WalletBalance = () => {
     setFormMessage('Payment succeeded. Updating wallet balance...')
     await loadWallet({ silent: true })
     setStripeIntent(null)
+    setSslIntent(null)
+    setSslConfirming(false)
     setAmount('')
     setIdempotencyKey(buildIdempotencyKey())
   }
@@ -125,37 +145,129 @@ const WalletBalance = () => {
       setFormMessage('Enter an amount greater than 0')
       return
     }
+    if (paymentMethod === PAYMENT_METHODS.CARD && numericAmount < cardMinAmount) {
+      setFormStatus(API_STATUS.error)
+      setFormMessage(`Card top up must be at least ${cardMinAmount} ${currency}`)
+      return
+    }
+    if (paymentMethod === PAYMENT_METHODS.SSLCOMMERZ && numericAmount < sslMinAmount) {
+      setFormStatus(API_STATUS.error)
+      setFormMessage(`SSLCommerz top up must be at least ${sslMinAmount} ${currency}`)
+      return
+    }
+    if (
+      paymentMethod === PAYMENT_METHODS.SSLCOMMERZ &&
+      wallet?.currency &&
+      wallet.currency.toUpperCase() !== 'BDT'
+    ) {
+      setFormStatus(API_STATUS.error)
+      setFormMessage('SSLCommerz is available for BDT wallets. Switch currency to BDT to continue.')
+      return
+    }
     setFormStatus(API_STATUS.loading)
-    setFormMessage('Opening secure payment sheet...')
+    setFormMessage(
+      paymentMethod === PAYMENT_METHODS.SSLCOMMERZ
+        ? 'Preparing SSLCommerz checkout...'
+        : 'Opening secure payment sheet...',
+    )
+    setSslConfirming(false)
     setStripeIntent(null)
+    setSslIntent(null)
     try {
-      const response = await createStripeTopUpIntent({
-        amount: numericAmount,
-        userId: user?.id,
-        currency: wallet?.currency,
-        idempotencyKey,
-        referenceId: `wallet-topup-${idempotencyKey}`,
-      })
-      if (response?.walletTransactionId && response?.status === 'SUCCEEDED') {
+      if (paymentMethod === PAYMENT_METHODS.SSLCOMMERZ) {
+        const response = await createSslcommerzTopUpIntent({
+          amount: numericAmount,
+          userId: user?.id,
+          currency: wallet?.currency || 'BDT',
+          idempotencyKey,
+          referenceId: `wallet-ssl-${idempotencyKey}`,
+          customerName: user?.name,
+          customerEmail: user?.email,
+          customerPhone: user?.phone || String(user?.id ?? ''),
+        })
+        if (response?.walletTransactionId && response?.status === 'SUCCEEDED') {
+          await handlePaymentSuccess()
+          return
+        }
+        setSslIntent(response)
         setFormStatus(API_STATUS.success)
-        setFormMessage('Payment already captured. Refreshing balance...')
-        await loadWallet({ silent: true })
-        setStripeIntent(null)
-        setAmount('')
-        setIdempotencyKey(buildIdempotencyKey())
+        setFormMessage('Continue in the SSLCommerz window to finish payment, then confirm below.')
         return
+      } else {
+        const response = await createStripeTopUpIntent({
+          amount: numericAmount,
+          userId: user?.id,
+          currency: wallet?.currency,
+          idempotencyKey,
+          referenceId: `wallet-topup-${idempotencyKey}`,
+        })
+        if (response?.walletTransactionId && response?.status === 'SUCCEEDED') {
+          setFormStatus(API_STATUS.success)
+          setFormMessage('Payment already captured. Refreshing balance...')
+          await loadWallet({ silent: true })
+          setStripeIntent(null)
+          setAmount('')
+          setIdempotencyKey(buildIdempotencyKey())
+          return
+        }
+        setStripeIntent(response)
+        setFormStatus(API_STATUS.success)
+        setFormMessage('Card entry ready. Complete payment to fund your wallet.')
       }
-      setStripeIntent(response)
-      setFormStatus(API_STATUS.success)
-      setFormMessage('Card entry ready. Complete payment to fund your wallet.')
     } catch (error) {
       console.error(error)
       setFormStatus(API_STATUS.error)
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        'Unable to start card payment right now'
+        (paymentMethod === PAYMENT_METHODS.SSLCOMMERZ
+          ? 'Unable to start SSLCommerz payment right now'
+          : 'Unable to start card payment right now')
       setFormMessage(message)
+    }
+  }
+
+  const openSslCheckout = () => {
+    if (sslIntent?.redirectUrl) {
+      window.open(sslIntent.redirectUrl, '_blank', 'noopener')
+    }
+  }
+
+  const handleSslConfirm = async () => {
+    if (!sslIntent?.tranId) {
+      setFormStatus(API_STATUS.error)
+      setFormMessage('Start an SSLCommerz payment before confirming.')
+      return
+    }
+    setSslConfirming(true)
+    setFormStatus(API_STATUS.loading)
+    setFormMessage('Confirming SSLCommerz payment...')
+    try {
+      const response = await validateSslcommerzPayment({
+        tranId: sslIntent.tranId,
+        userId: user?.id,
+      })
+      setSslIntent((prev) => ({
+        ...prev,
+        ...response,
+        redirectUrl: response?.redirectUrl ?? prev?.redirectUrl,
+      }))
+      if (response?.status === 'SUCCEEDED') {
+        await handlePaymentSuccess()
+        return
+      }
+      setFormStatus(API_STATUS.success)
+      setFormMessage(response?.message || `Payment status: ${response?.status ?? 'processing'}`)
+    } catch (error) {
+      console.error(error)
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Unable to confirm SSLCommerz payment right now'
+      setFormStatus(API_STATUS.error)
+      setFormMessage(message)
+    } finally {
+      setSslConfirming(false)
     }
   }
 
@@ -189,7 +301,6 @@ const WalletBalance = () => {
     )
   }
 
-  const currency = wallet?.currency || 'USD'
   const lastUpdated = wallet?.updatedAt
     ? new Date(wallet.updatedAt).toLocaleString()
     : 'Just now'
@@ -260,6 +371,48 @@ const WalletBalance = () => {
 
           <form className="mt-4 space-y-4" onSubmit={handleTopUp}>
             <div className="space-y-2">
+              <p className="text-sm font-semibold text-slate-800">Payment method</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  {
+                    id: PAYMENT_METHODS.SSLCOMMERZ,
+                    title: 'SSLCommerz (Bangladesh)',
+                    body: 'Pay with local cards and wallets in BDT.',
+                  },
+                  {
+                    id: PAYMENT_METHODS.CARD,
+                    title: 'Card (Stripe)',
+                    body: 'International cards and Apple/Google Pay.',
+                  },
+                ].map((method) => {
+                  const active = paymentMethod === method.id
+                  return (
+                    <button
+                      type="button"
+                      key={method.id}
+                      onClick={() => {
+                        setPaymentMethod(method.id)
+                        setFormStatus(API_STATUS.idle)
+                        setFormMessage('')
+                        setStripeIntent(null)
+                        setSslIntent(null)
+                        setIdempotencyKey(buildIdempotencyKey())
+                      }}
+                      className={`flex h-full w-full flex-col items-start rounded-xl border px-4 py-3 text-left transition ${
+                        active
+                          ? 'border-indigo-200 bg-indigo-50 text-indigo-900 shadow-sm'
+                          : 'border-slate-200 bg-white text-slate-800 hover:-translate-y-[1px] hover:border-indigo-200'
+                      }`}
+                    >
+                      <span className="text-sm font-semibold">{method.title}</span>
+                      <span className="text-xs text-slate-600">{method.body}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-800" htmlFor="topupAmount">
                 Amount
               </label>
@@ -267,12 +420,17 @@ const WalletBalance = () => {
                 <input
                   id="topupAmount"
                   type="number"
-                  min="1"
+                  min={
+                    paymentMethod === PAYMENT_METHODS.SSLCOMMERZ
+                      ? String(sslMinAmount)
+                      : String(cardMinAmount ?? 1)
+                  }
                   step="0.01"
                   value={amount}
                   onChange={(event) => {
                     setAmount(event.target.value)
                     setStripeIntent(null)
+                    setSslIntent(null)
                     setIdempotencyKey(buildIdempotencyKey())
                   }}
                   placeholder="Enter amount"
@@ -292,6 +450,7 @@ const WalletBalance = () => {
                   onClick={() => {
                     setAmount(String(value))
                     setStripeIntent(null)
+                    setSslIntent(null)
                     setIdempotencyKey(buildIdempotencyKey())
                   }}
                   className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800"
@@ -306,7 +465,11 @@ const WalletBalance = () => {
               disabled={formStatus === API_STATUS.loading}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {formStatus === API_STATUS.loading ? 'Funding...' : 'Fund wallet'}
+              {formStatus === API_STATUS.loading
+                ? 'Funding...'
+                : paymentMethod === PAYMENT_METHODS.SSLCOMMERZ
+                  ? 'Fund with SSLCommerz'
+                  : 'Fund with card'}
             </button>
 
             {formMessage && (
@@ -321,6 +484,58 @@ const WalletBalance = () => {
               </p>
             )}
           </form>
+
+          {sslIntent?.tranId && (
+            <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
+                Complete payment in SSLCommerz
+              </p>
+              <div className="space-y-2 text-sm text-slate-800">
+                <div className="flex items-center justify-between rounded-lg border border-amber-100 bg-white px-3 py-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
+                    Transaction ID
+                  </span>
+                  <span className="font-semibold">{sslIntent.tranId}</span>
+                </div>
+                {sslIntent.redirectUrl && (
+                  <div className="flex items-center justify-between rounded-lg border border-amber-100 bg-white px-3 py-2">
+                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
+                      Checkout link
+                    </span>
+                    <button
+                      type="button"
+                      onClick={openSslCheckout}
+                      className="text-indigo-700 underline decoration-indigo-300 decoration-2 underline-offset-4 transition hover:text-indigo-900"
+                    >
+                      Open SSLCommerz
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-amber-800">
+                  Complete the payment in the SSLCommerz window. Once finished, click confirm below
+                  to post the funds to your wallet.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={openSslCheckout}
+                    disabled={!sslIntent?.redirectUrl}
+                    className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:-translate-y-[1px] hover:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Open SSLCommerz window
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSslConfirm}
+                    disabled={sslConfirming}
+                    className="inline-flex items-center justify-center rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {sslConfirming ? 'Confirming...' : 'I completed payment'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {stripeIntent?.clientSecret && stripePromise && (
             <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-4">
