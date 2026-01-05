@@ -54,6 +54,32 @@ export const validateRegister = (
   return errors
 }
 
+export const validatePasswordReset = (
+  { email, otp, password, confirmPassword, captchaToken },
+  options = {},
+) => {
+  const { requireOtp = false, requirePasswords = false, requireCaptcha = false } = options
+  const errors = {}
+  if (!isEmailValid(email)) {
+    errors.email = 'Enter a valid email'
+  }
+  if (requireOtp && !isRequired(otp)) {
+    errors.otp = 'Enter the verification code sent to your email'
+  }
+  if (requirePasswords) {
+    if (!isRequired(password) || password.length < MIN_PASSWORD_LENGTH) {
+      errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+    }
+    if (password !== confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match'
+    }
+  }
+  if (requireCaptcha && !isRequired(captchaToken)) {
+    errors.captchaToken = 'Please complete the captcha challenge'
+  }
+  return errors
+}
+
 export const validateLoanPayload = ({ amount, tenureMonths, purpose }) => {
   const errors = {}
   if (!isAmountValid(Number(amount)) || Number(amount) < 1000) {
