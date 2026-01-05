@@ -15,6 +15,8 @@ import LenderDashboard from './pages/dashboard/LenderDashboard'
 import ApplyLoan from './pages/loan/ApplyLoan'
 import MyLoans from './pages/loan/MyLoans'
 import LoanDetails from './pages/loan/LoanDetails'
+import LoanMarketplace from './pages/loan/LoanMarketplace'
+import LenderOffers from './pages/loan/LenderOffers'
 import WalletBalance from './pages/wallet/WalletBalance'
 import Transactions from './pages/wallet/Transactions'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -54,6 +56,8 @@ function App() {
             <Route path="/dashboard/lender" element={<LenderDashboard />} />
             <Route path="/lender/dashboard" element={<Navigate to="/dashboard/lender" replace />} />
             <Route path="/loans/apply" element={<ApplyLoan />} />
+            <Route path="/loans/marketplace" element={<LoanMarketplace />} />
+            <Route path="/loans/offers" element={<LenderOffers />} />
             <Route path="/loans" element={<MyLoans />} />
             <Route path="/loans/:id" element={<LoanDetails />} />
             <Route path="/wallet" element={<WalletBalance />} />

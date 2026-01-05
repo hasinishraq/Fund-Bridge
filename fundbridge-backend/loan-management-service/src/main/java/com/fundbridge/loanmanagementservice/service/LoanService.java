@@ -7,6 +7,10 @@ import com.fundbridge.loanmanagementservice.dto.LoanResponse;
 import com.fundbridge.loanmanagementservice.dto.UpdateLoanStatusRequest;
 import com.fundbridge.loanmanagementservice.entity.Loan;
 import com.fundbridge.loanmanagementservice.entity.LoanEventType;
+import com.fundbridge.loanmanagementservice.entity.LoanFunding;
+import com.fundbridge.loanmanagementservice.entity.LoanFundingStatus;
+import com.fundbridge.loanmanagementservice.entity.LoanInstallment;
+import com.fundbridge.loanmanagementservice.entity.LoanInstallmentStatus;
 import com.fundbridge.loanmanagementservice.entity.LoanStatus;
 import com.fundbridge.loanmanagementservice.exception.BadRequestException;
 import com.fundbridge.loanmanagementservice.exception.ResourceNotFoundException;
@@ -17,7 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class LoanService {
@@ -63,11 +71,33 @@ public class LoanService {
     }
 
     @Transactional(readOnly = true)
-    public List<LoanResponse> listLoans(Long borrowerId) {
-        Long resolvedBorrower = resolveBorrowerId(borrowerId);
-        return loanRepository.findByBorrowerUserIdOrderByCreatedAtDesc(resolvedBorrower)
-                .stream()
-                .map(this::toResponse)
+    public List<LoanResponse> listLoans(Long borrowerId,
+                                        String scope,
+                                        String statuses,
+                                        String query,
+                                        BigDecimal minAmount,
+                                        BigDecimal maxAmount,
+                                        BigDecimal minRate,
+                                        BigDecimal maxRate,
+                                        Integer minTenure,
+                                        Integer maxTenure) {
+        boolean lenderScope = scope != null && scope.equalsIgnoreCase("LENDER");
+        boolean marketplaceScope = lenderScope || (scope != null && scope.equalsIgnoreCase("MARKETPLACE"));
+        List<LoanStatus> statusFilter = parseStatusFilter(statuses);
+        List<Loan> loans;
+        if (marketplaceScope) {
+            loans = statusFilter.isEmpty()
+                    ? loanRepository.findAllByOrderByCreatedAtDesc()
+                    : loanRepository.findByStatusInOrderByCreatedAtDesc(statusFilter);
+        } else {
+            Long resolvedBorrower = resolveBorrowerId(borrowerId);
+            loans = statusFilter.isEmpty()
+                    ? loanRepository.findByBorrowerUserIdOrderByCreatedAtDesc(resolvedBorrower)
+                    : loanRepository.findByBorrowerUserIdAndStatusInOrderByCreatedAtDesc(resolvedBorrower, statusFilter);
+        }
+        List<Loan> filtered = applyFilters(loans, query, minAmount, maxAmount, minRate, maxRate, minTenure, maxTenure);
+        return filtered.stream()
+                .map(loan -> toResponse(loan, computeAggregates(loan)))
                 .toList();
     }
 
@@ -75,6 +105,7 @@ public class LoanService {
     public LoanDetailResponse getLoanDetail(Long loanId) {
         Loan loan = loanRepository.findById(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan not found"));
+        LoanAggregate aggregates = computeAggregates(loan);
         return new LoanDetailResponse(
                 loan.getId(),
                 loan.getBorrowerUserId(),
@@ -89,6 +120,12 @@ public class LoanService {
                 loan.getApprovedAt(),
                 loan.getActivatedAt(),
                 loan.getClosedAt(),
+                aggregates.pledgedAmount(),
+                aggregates.capturedAmount(),
+                aggregates.installmentsPaid(),
+                aggregates.installmentsTotal(),
+                aggregates.nextDueDate(),
+                aggregates.nextDueAmount(),
                 fundingService.listFundingsForLoan(loanId),
                 repaymentService.listInstallments(loanId),
                 loanEventService.listForLoan(loanId)
@@ -119,6 +156,27 @@ public class LoanService {
             loanEventService.record(loan, eventType, null, "Status updated to " + targetStatus);
         }
         return toResponse(loanRepository.save(loan));
+    }
+
+    private List<LoanStatus> parseStatusFilter(String statuses) {
+        if (statuses == null || statuses.isBlank()) {
+            return List.of();
+        }
+        List<LoanStatus> parsed = new ArrayList<>();
+        for (String token : statuses.split(",")) {
+            if (token == null || token.isBlank()) {
+                continue;
+            }
+            try {
+                parsed.add(parseStatus(token));
+            } catch (BadRequestException ignored) {
+                // Ignore invalid values so callers can send user-facing labels
+            }
+        }
+        if (parsed.isEmpty()) {
+            throw new BadRequestException("No valid statuses provided");
+        }
+        return parsed;
     }
 
     private LoanStatus parseStatus(String status) {
@@ -165,7 +223,63 @@ public class LoanService {
         return loanProperties.getDemo().getBorrowerId();
     }
 
+    private List<Loan> applyFilters(List<Loan> loans,
+                                    String query,
+                                    BigDecimal minAmount,
+                                    BigDecimal maxAmount,
+                                    BigDecimal minRate,
+                                    BigDecimal maxRate,
+                                    Integer minTenure,
+                                    Integer maxTenure) {
+        if (loans == null || loans.isEmpty()) {
+            return List.of();
+        }
+        String normalizedQuery = query == null ? null : query.trim().toLowerCase();
+        return loans.stream()
+                .filter(loan -> matchesQuery(loan, normalizedQuery))
+                .filter(loan -> matchesRange(loan.getAmount(), minAmount, maxAmount))
+                .filter(loan -> matchesRange(loan.getInterestRate(), minRate, maxRate))
+                .filter(loan -> matchesTenure(loan.getTermMonths(), minTenure, maxTenure))
+                .toList();
+    }
+
+    private boolean matchesQuery(Loan loan, String normalizedQuery) {
+        if (normalizedQuery == null || normalizedQuery.isBlank()) {
+            return true;
+        }
+        boolean matchesPurpose = loan.getPurpose() != null
+                && loan.getPurpose().toLowerCase().contains(normalizedQuery);
+        boolean matchesId = loan.getId() != null
+                && String.valueOf(loan.getId()).contains(normalizedQuery);
+        return matchesPurpose || matchesId;
+    }
+
+    private boolean matchesRange(BigDecimal value, BigDecimal min, BigDecimal max) {
+        BigDecimal safeValue = value == null ? BigDecimal.ZERO : value;
+        if (min != null && safeValue.compareTo(min) < 0) {
+            return false;
+        }
+        if (max != null && safeValue.compareTo(max) > 0) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean matchesTenure(int value, Integer min, Integer max) {
+        if (min != null && value < min) {
+            return false;
+        }
+        if (max != null && value > max) {
+            return false;
+        }
+        return true;
+    }
+
     private LoanResponse toResponse(Loan loan) {
+        return toResponse(loan, computeAggregates(loan));
+    }
+
+    private LoanResponse toResponse(Loan loan, LoanAggregate aggregates) {
         return new LoanResponse(
                 loan.getId(),
                 loan.getBorrowerUserId(),
@@ -179,7 +293,13 @@ public class LoanService {
                 loan.getUpdatedAt(),
                 loan.getApprovedAt(),
                 loan.getActivatedAt(),
-                loan.getClosedAt()
+                loan.getClosedAt(),
+                aggregates.pledgedAmount(),
+                aggregates.capturedAmount(),
+                aggregates.installmentsPaid(),
+                aggregates.installmentsTotal(),
+                aggregates.nextDueDate(),
+                aggregates.nextDueAmount()
         );
     }
 
@@ -192,5 +312,53 @@ public class LoanService {
             case FUNDED -> "DISBURSED";
             default -> status.name();
         };
+    }
+
+    private LoanAggregate computeAggregates(Loan loan) {
+        if (loan == null) {
+            return new LoanAggregate(BigDecimal.ZERO, BigDecimal.ZERO, 0, 0, null, null);
+        }
+        List<LoanFunding> fundings = loan.getFundings() == null ? List.of() : loan.getFundings();
+        BigDecimal pledged = fundings.stream()
+                .filter(Objects::nonNull)
+                .filter(f -> f.getStatus() != null
+                        && f.getStatus() != LoanFundingStatus.CANCELED
+                        && f.getStatus() != LoanFundingStatus.REFUNDED)
+                .map(LoanFunding::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal captured = fundings.stream()
+                .filter(Objects::nonNull)
+                .filter(f -> f.getStatus() == LoanFundingStatus.CAPTURED)
+                .map(LoanFunding::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        List<LoanInstallment> installments = loan.getInstallments() == null ? List.of() : loan.getInstallments();
+        int totalInstallments = installments.size();
+        int paidInstallments = (int) installments.stream()
+                .filter(inst -> inst.getStatus() == LoanInstallmentStatus.PAID)
+                .count();
+        LoanInstallment nextDue = installments.stream()
+                .filter(inst -> inst.getStatus() != LoanInstallmentStatus.PAID)
+                .sorted(Comparator.comparing(LoanInstallment::getDueDate))
+                .findFirst()
+                .orElse(null);
+        LocalDate nextDueDate = nextDue != null ? nextDue.getDueDate() : null;
+        BigDecimal nextDueAmount = nextDue != null ? nextDue.getTotalAmount() : null;
+
+        return new LoanAggregate(pledged, captured, paidInstallments, totalInstallments, nextDueDate, nextDueAmount);
+    }
+
+    private record LoanAggregate(
+            BigDecimal pledgedAmount,
+            BigDecimal capturedAmount,
+            int installmentsPaid,
+            int installmentsTotal,
+            LocalDate nextDueDate,
+            BigDecimal nextDueAmount
+    ) {
     }
 }

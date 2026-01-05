@@ -788,6 +788,47 @@ table td {
   gap: 1rem;
 }
 
+.marketplace-filters {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  padding: 0.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.marketplace-filters input,
+.marketplace-filters select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+  background: #fff;
+}
+
+.filter-range {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
+}
+
+.filter-range label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+}
+
+.filter-input,
+.filter-select {
+  display: flex;
+  align-items: center;
+}
+
 .loan-row {
   display: flex;
   justify-content: space-between;
@@ -810,6 +851,19 @@ table td {
   display: block;
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.loan-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.loan-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .opportunity-grid {

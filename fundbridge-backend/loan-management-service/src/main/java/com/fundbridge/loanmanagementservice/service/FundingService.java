@@ -12,8 +12,18 @@ import com.fundbridge.loanmanagementservice.entity.LoanStatus;
 import com.fundbridge.loanmanagementservice.exception.BadRequestException;
 import com.fundbridge.loanmanagementservice.exception.ResourceConflictException;
 import com.fundbridge.loanmanagementservice.exception.ResourceNotFoundException;
+import com.fundbridge.loanmanagementservice.integration.wallet.WalletClient;
+import com.fundbridge.loanmanagementservice.integration.wallet.dto.CaptureHoldRequest;
+import com.fundbridge.loanmanagementservice.integration.wallet.dto.CreateHoldRequest;
+import com.fundbridge.loanmanagementservice.integration.wallet.dto.ReleaseHoldRequest;
+import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletHoldResponse;
+import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletSummaryResponse;
+import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletTransactionResponse;
+import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletTransactionType;
 import com.fundbridge.loanmanagementservice.repository.LoanFundingRepository;
 import com.fundbridge.loanmanagementservice.repository.LoanRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,25 +31,33 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class FundingService {
 
+    private static final Logger log = LoggerFactory.getLogger(FundingService.class);
+    private static final String HOLD_REASON = "LOAN_FUNDING_HOLD";
+    private static final String REFERENCE_TYPE = "LOAN_FUNDING";
+
     private final LoanFundingRepository fundingRepository;
     private final LoanRepository loanRepository;
     private final LoanEventService loanEventService;
     private final LoanProperties loanProperties;
+    private final WalletClient walletClient;
 
     public FundingService(LoanFundingRepository fundingRepository,
                           LoanRepository loanRepository,
                           LoanEventService loanEventService,
-                          LoanProperties loanProperties) {
+                          LoanProperties loanProperties,
+                          WalletClient walletClient) {
         this.fundingRepository = fundingRepository;
         this.loanRepository = loanRepository;
         this.loanEventService = loanEventService;
         this.loanProperties = loanProperties;
+        this.walletClient = walletClient;
     }
 
     @Transactional
@@ -50,20 +68,34 @@ public class FundingService {
                 || loan.getStatus() == LoanStatus.CLOSED) {
             throw new ResourceConflictException("Cannot fund a closed or rejected loan");
         }
+
         String idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey());
         Optional<LoanFunding> existing = fundingRepository.findByIdempotencyKey(idempotencyKey);
         if (existing.isPresent()) {
             return toResponse(existing.get());
         }
 
+        Long lenderId = resolveLenderId(request.lenderId());
+        BigDecimal amount = normalizeAmount(request.amount());
+        WalletHoldResponse hold = createFundingHold(loan, lenderId, amount, idempotencyKey);
+
         LoanFunding funding = new LoanFunding();
         funding.setLoan(loan);
-        funding.setLenderUserId(resolveLenderId(request.lenderId()));
-        funding.setAmount(normalizeAmount(request.amount()));
+        funding.setLenderUserId(lenderId);
+        funding.setAmount(amount);
         funding.setStatus(LoanFundingStatus.PLEDGED);
         funding.setIdempotencyKey(idempotencyKey);
-        funding.setWalletTxRef(request.walletTxRef());
-        fundingRepository.save(funding);
+        funding.setWalletTxRef(hold != null && hold.holdId() != null ? String.valueOf(hold.holdId()) : null);
+        try {
+            fundingRepository.save(funding);
+        } catch (RuntimeException ex) {
+            safeReleaseHold(hold);
+            throw ex;
+        }
+        if (loan.getStatus() == LoanStatus.REQUESTED || loan.getStatus() == LoanStatus.APPROVED) {
+            loan.setStatus(LoanStatus.FUNDING);
+            loanRepository.save(loan);
+        }
         return toResponse(funding);
     }
 
@@ -77,9 +109,23 @@ public class FundingService {
         if (funding.getStatus() == LoanFundingStatus.CAPTURED) {
             return toResponse(funding);
         }
+        Long holdId = resolveHoldId(funding.getWalletTxRef(), request);
+        WalletTransactionResponse captureTx = null;
+        if (holdId != null) {
+            CaptureHoldRequest captureRequest = new CaptureHoldRequest(
+                    WalletTransactionType.FUNDING,
+                    REFERENCE_TYPE,
+                    funding.getLoan() != null ? String.valueOf(funding.getLoan().getId()) : null,
+                    buildCaptureIdempotencyKey(funding),
+                    null
+            );
+            captureTx = walletClient.captureHold(holdId, captureRequest);
+        }
         funding.setStatus(LoanFundingStatus.CAPTURED);
         funding.setCapturedAt(Instant.now());
-        if (request != null && request.walletTxRef() != null) {
+        if (captureTx != null && captureTx.txRef() != null) {
+            funding.setWalletTxRef(captureTx.txRef());
+        } else if (request != null && request.walletTxRef() != null) {
             funding.setWalletTxRef(request.walletTxRef());
         }
         fundingRepository.save(funding);
@@ -94,8 +140,12 @@ public class FundingService {
         if (funding.getStatus() == LoanFundingStatus.CAPTURED) {
             throw new ResourceConflictException("Captured funding cannot be canceled");
         }
+        Long holdId = resolveHoldId(funding.getWalletTxRef(), request);
+        if (holdId != null) {
+            walletClient.releaseHold(holdId, new ReleaseHoldRequest("Funding canceled"));
+        }
         funding.setStatus(LoanFundingStatus.CANCELED);
-        if (request != null && request.walletTxRef() != null) {
+        if (request != null && request.walletTxRef() != null && holdId == null) {
             funding.setWalletTxRef(request.walletTxRef());
         }
         fundingRepository.save(funding);
@@ -134,6 +184,12 @@ public class FundingService {
             loanRepository.save(loan);
             loanEventService.record(loan, LoanEventType.FUNDED, null,
                     "Loan fully funded with total " + totalCaptured);
+        } else if (totalCaptured.compareTo(BigDecimal.ZERO) > 0
+                && loan.getStatus() != LoanStatus.FUNDED
+                && loan.getStatus() != LoanStatus.ACTIVE
+                && loan.getStatus() != LoanStatus.FUNDING) {
+            loan.setStatus(LoanStatus.FUNDING);
+            loanRepository.save(loan);
         }
     }
 
@@ -144,6 +200,42 @@ public class FundingService {
         return amount.setScale(2, RoundingMode.HALF_UP);
     }
 
+    private WalletHoldResponse createFundingHold(Loan loan,
+                                                 Long lenderId,
+                                                 BigDecimal amount,
+                                                 String idempotencyKey) {
+        String currency = resolveCurrency(loan);
+        WalletSummaryResponse wallet = walletClient.getWallet(lenderId, currency);
+        if (wallet == null || wallet.accountId() == null) {
+            throw new ResourceConflictException("Wallet account unavailable for funding hold");
+        }
+        CreateHoldRequest holdRequest = new CreateHoldRequest(
+                wallet.accountId(),
+                amount,
+                currency,
+                HOLD_REASON,
+                REFERENCE_TYPE,
+                loan != null ? String.valueOf(loan.getId()) : null,
+                idempotencyKey
+        );
+        WalletHoldResponse hold = walletClient.createHold(holdRequest);
+        if (hold == null || hold.holdId() == null) {
+            throw new BadRequestException("Wallet hold was not created");
+        }
+        return hold;
+    }
+
+    private void safeReleaseHold(WalletHoldResponse hold) {
+        if (hold == null || hold.holdId() == null) {
+            return;
+        }
+        try {
+            walletClient.releaseHold(hold.holdId(), new ReleaseHoldRequest("Funding creation failed"));
+        } catch (Exception ex) {
+            log.warn("Failed to release wallet hold {}", hold.holdId(), ex);
+        }
+    }
+
     private String normalizeIdempotencyKey(String key) {
         String value = (key == null || key.isBlank()) ? UUID.randomUUID().toString() : key.trim();
         if (value.length() > 80) {
@@ -152,11 +244,56 @@ public class FundingService {
         return value;
     }
 
+    private String buildCaptureIdempotencyKey(LoanFunding funding) {
+        String base = funding != null ? funding.getIdempotencyKey() : null;
+        if (base == null || base.isBlank()) {
+            base = UUID.randomUUID().toString();
+        }
+        return normalizeIdempotencyKey(base + ":capture");
+    }
+
     private Long resolveLenderId(Long lenderId) {
         if (lenderId != null) {
             return lenderId;
         }
         return loanProperties.getDemo().getLenderId();
+    }
+
+    private String resolveCurrency(Loan loan) {
+        if (loan != null && loan.getCurrency() != null && !loan.getCurrency().isBlank()) {
+            return loan.getCurrency().trim().toUpperCase(Locale.ROOT);
+        }
+        String fallback = loanProperties.getDefaultCurrency();
+        if (fallback == null || fallback.isBlank()) {
+            return "BDT";
+        }
+        return fallback.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private Long resolveHoldId(String walletTxRef, FundingActionRequest request) {
+        Long holdId = parseHoldId(walletTxRef);
+        if (holdId != null) {
+            return holdId;
+        }
+        if (request == null) {
+            return null;
+        }
+        return parseHoldId(request.walletTxRef());
+    }
+
+    private Long parseHoldId(String walletTxRef) {
+        if (walletTxRef == null || walletTxRef.isBlank()) {
+            return null;
+        }
+        String normalized = walletTxRef.trim();
+        if (normalized.startsWith("hold:")) {
+            normalized = normalized.substring(5);
+        }
+        try {
+            return Long.valueOf(normalized);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private FundingResponse toResponse(LoanFunding funding) {
