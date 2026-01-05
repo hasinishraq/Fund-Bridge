@@ -49,7 +49,7 @@ export const NAV_LINKS = [
 
 export const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'BDT',
 })
 
 export const MIN_PASSWORD_LENGTH = 8

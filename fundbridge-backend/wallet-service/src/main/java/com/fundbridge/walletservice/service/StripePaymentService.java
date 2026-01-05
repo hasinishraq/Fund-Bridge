@@ -41,18 +41,21 @@ public class StripePaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(StripePaymentService.class);
     private static final int IDEMPOTENCY_MAX_LENGTH = 80;
+    private static final BigDecimal MIN_STRIPE_BDT_AMOUNT = new BigDecimal("60.00"); // Stripe requires >= 50¢ equivalent
 
     private final StripeProperties stripeProperties;
     private final WalletService walletService;
     private final WalletPaymentIntentRepository paymentIntentRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     public StripePaymentService(StripeProperties stripeProperties,
                                 WalletService walletService,
-                                WalletPaymentIntentRepository paymentIntentRepository) {
+                                WalletPaymentIntentRepository paymentIntentRepository,
+                                ObjectMapper objectMapper) {
         this.stripeProperties = stripeProperties;
         this.walletService = walletService;
         this.paymentIntentRepository = paymentIntentRepository;
+        this.objectMapper = objectMapper;
         if (StringUtils.hasText(stripeProperties.getSecretKey())) {
             Stripe.apiKey = stripeProperties.getSecretKey();
         }
@@ -68,6 +71,9 @@ public class StripePaymentService {
         BigDecimal normalizedAmount = normalizeAmount(request.amount());
         if (normalizedAmount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("Amount must be greater than zero");
+        }
+        if (isBdt(request.currency()) && normalizedAmount.compareTo(MIN_STRIPE_BDT_AMOUNT) < 0) {
+            throw new BadRequestException("Minimum Stripe card top up in BDT is " + MIN_STRIPE_BDT_AMOUNT.toPlainString());
         }
 
         String normalizedIdempotency = normalizeIdempotencyKey(request.idempotencyKey());
@@ -273,6 +279,10 @@ public class StripePaymentService {
             return BigDecimal.ZERO;
         }
         return amount.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private boolean isBdt(String currency) {
+        return currency != null && "BDT".equalsIgnoreCase(currency.trim());
     }
 
     private String normalizeIdempotencyKey(String key) {
