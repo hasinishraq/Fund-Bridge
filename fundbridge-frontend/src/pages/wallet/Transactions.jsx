@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { jsPDF } from 'jspdf'
 import { fetchTransactions } from '../../api/walletApi'
 import { API_STATUS, CURRENCY_FORMATTER } from '../../utils/constants'
 import Loader from '../../components/common/Loader'
@@ -27,6 +28,27 @@ const formatDate = (value) =>
         minute: '2-digit',
       })
     : 'N/A'
+
+const formatPdfDate = (value) =>
+  value
+    ? new Date(value).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'N/A'
+
+const PDF_NUMBER_FORMATTER = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+const formatPdfAmount = (amount) => {
+  const safeAmount = Number.isFinite(Number(amount)) ? Number(amount) : 0
+  return PDF_NUMBER_FORMATTER.format(safeAmount)
+}
 
 const Transactions = () => {
   const [transactions, setTransactions] = useState([])
@@ -93,6 +115,116 @@ const Transactions = () => {
     return ['ALL', ...Array.from(set)]
   }, [transactions])
 
+  const buildFilterSummary = () => {
+    const parts = []
+    if (filters.query) {
+      parts.push(`Query: ${filters.query}`)
+    }
+    if (filters.type && filters.type !== 'ALL') {
+      parts.push(`Type: ${filters.type}`)
+    }
+    if (filters.state && filters.state !== 'ALL') {
+      parts.push(`Status: ${filters.state}`)
+    }
+    if (filters.startDate) {
+      parts.push(`From: ${filters.startDate}`)
+    }
+    if (filters.endDate) {
+      parts.push(`To: ${filters.endDate}`)
+    }
+    if (!parts.length) {
+      return 'Filters: None'
+    }
+    return `Filters: ${parts.join(' | ')}`
+  }
+
+  const handleExportPdf = () => {
+    if (!filteredTransactions.length) {
+      return
+    }
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+    const margin = 40
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const headerTop = margin
+    const lineHeight = 18
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(18)
+    doc.text('Transaction Report', margin, headerTop + 5)
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    const generatedLine = `Generated: ${formatPdfDate(new Date())}`
+    doc.text(generatedLine, margin, headerTop + 25)
+
+    const filterSummary = buildFilterSummary()
+    const maxTextWidth = pageWidth - margin * 2
+    const filterLines = doc.splitTextToSize(filterSummary, maxTextWidth)
+    doc.text(filterLines, margin, headerTop + 40)
+
+    let y = headerTop + 40 + filterLines.length * lineHeight + 10
+
+    const baseWidths = [70, 120, 120, 140, 90]
+    const remainingWidth = pageWidth - margin * 2 - baseWidths.reduce((sum, width) => sum + width, 0)
+    const columns = [
+      { label: 'ID', width: baseWidths[0], align: 'left' },
+      { label: 'Type', width: baseWidths[1], align: 'left' },
+      { label: 'Status', width: baseWidths[2], align: 'left' },
+      { label: 'Amount', width: baseWidths[3], align: 'right' },
+      { label: 'Currency', width: baseWidths[4], align: 'left' },
+      { label: 'Date', width: Math.max(remainingWidth, 180), align: 'left' },
+    ]
+
+    const drawHeader = () => {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      let x = margin
+      columns.forEach((col) => {
+        const textX = col.align === 'right' ? x + col.width : x
+        doc.text(col.label, textX, y, { align: col.align })
+        x += col.width
+      })
+      doc.setFont('helvetica', 'normal')
+      y += lineHeight
+      doc.setDrawColor(226, 232, 240)
+      doc.line(margin, y - 10, pageWidth - margin, y - 10)
+    }
+
+    const addPageIfNeeded = () => {
+      if (y + lineHeight > pageHeight - margin) {
+        doc.addPage()
+        y = margin
+        drawHeader()
+      }
+    }
+
+    drawHeader()
+
+    filteredTransactions.forEach((tx) => {
+      addPageIfNeeded()
+      let x = margin
+      const row = [
+        tx.id ? String(tx.id) : 'N/A',
+        tx.type || 'N/A',
+        tx.status || 'N/A',
+        formatPdfAmount(tx.amount),
+        tx.currency || 'N/A',
+        formatPdfDate(tx.createdAt),
+      ]
+      row.forEach((cell, index) => {
+        const column = columns[index]
+        const cellText = cell == null ? '' : String(cell)
+        const textX = column.align === 'right' ? x + column.width : x
+        doc.text(cellText, textX, y, { align: column.align })
+        x += column.width
+      })
+      y += lineHeight
+    })
+
+    doc.save('transaction-report.pdf')
+  }
+
   if (bootstrapping || status === API_STATUS.loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -139,6 +271,14 @@ const Transactions = () => {
               className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-100"
             >
               Refresh
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={!filteredTransactions.length}
+              className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:bg-indigo-300"
+            >
+              Export PDF
             </button>
           </div>
         </div>
@@ -238,20 +378,20 @@ const Transactions = () => {
                       <span
                         className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${typeToneMap[tx.type] || typeToneMap.default}`}
                       >
-                        {tx.type || '—'}
+                        {tx.type || 'N/A'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-800">
                       <span
                         className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusToneMap[tx.status] || statusToneMap.default}`}
                       >
-                        {tx.status || '—'}
+                        {tx.status || 'N/A'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-900">
                       {CURRENCY_FORMATTER.format(tx.amount || 0)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{tx.currency || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{tx.currency || 'N/A'}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">
                       {formatDate(tx.createdAt)}
                     </td>
