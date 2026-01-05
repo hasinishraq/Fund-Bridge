@@ -60,3 +60,40 @@ export const createStripeTopUpIntent = async ({
   })
   return data
 }
+
+export const createSslcommerzTopUpIntent = async ({
+  amount,
+  userId,
+  currency,
+  idempotencyKey,
+  referenceId,
+  customerName,
+  customerEmail,
+  customerPhone,
+} = {}) => {
+  if (!userId) {
+    throw new Error('userId is required to create an SSLCommerz top up intent')
+  }
+  const { data } = await client.post('/payments/sslcommerz/top-up', {
+    amount,
+    userId,
+    currency,
+    idempotencyKey,
+    referenceId,
+    customerName,
+    customerEmail,
+    customerPhone,
+  })
+  return data
+}
+
+export const validateSslcommerzPayment = async ({ tranId, userId } = {}) => {
+  if (!tranId || !userId) {
+    throw new Error('tranId and userId are required to confirm SSLCommerz payment')
+  }
+  const { data } = await client.post('/payments/sslcommerz/validate', {
+    tranId,
+    userId,
+  })
+  return data
+}
