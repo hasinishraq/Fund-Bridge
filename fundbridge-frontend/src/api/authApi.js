@@ -68,3 +68,18 @@ export const refreshSession = async ({ refreshToken }) => {
   const { data } = await client.post('/auth/token/refresh', { refreshToken })
   return normalizeAuthResponse(data)
 }
+
+export const requestPasswordReset = async ({ email, captchaToken }) => {
+  await client.post('/auth/password/forgot', {
+    email,
+    captchaToken,
+  })
+}
+
+export const resetPassword = async ({ email, otp, newPassword }) => {
+  await client.post('/auth/password/reset', {
+    email,
+    otp,
+    newPassword,
+  })
+}
