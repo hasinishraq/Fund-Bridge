@@ -1,7 +1,9 @@
 package com.fundbridge.authservice.controller;
 
 import com.fundbridge.authservice.dto.AuthResponse;
+import com.fundbridge.authservice.dto.ForgotPasswordRequest;
 import com.fundbridge.authservice.dto.LoginRequest;
+import com.fundbridge.authservice.dto.PasswordResetRequest;
 import com.fundbridge.authservice.dto.RefreshTokenRequest;
 import com.fundbridge.authservice.dto.RegisterInitRequest;
 import com.fundbridge.authservice.dto.RegisterRequest;
@@ -52,6 +54,18 @@ public class AuthController {
     @PostMapping("/token/refresh")
     public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @PostMapping("/password/forgot")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.startPasswordReset(request);
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/password/reset")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")

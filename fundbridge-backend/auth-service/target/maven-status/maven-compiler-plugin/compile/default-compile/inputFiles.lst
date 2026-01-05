@@ -9,6 +9,7 @@ G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\jav
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\entity\KycStatus.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\dto\RegisterRequest.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\dto\SendOtpRequest.java
+G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\dto\ForgotPasswordRequest.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\service\RoleService.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\dto\TokenResult.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\kyc\dto\KycApplicantResponse.java
@@ -33,6 +34,7 @@ G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\jav
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\security\UserPrincipal.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\AuthServiceApplication.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\service\HashService.java
+G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\dto\PasswordResetRequest.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\kyc\config\SumsubProperties.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\controller\KycController.java
 G:\Software Lab Project\Fund-Bridge\fundbridge-backend\auth-service\src\main\java\com\fundbridge\authservice\dto\LoginRequest.java
