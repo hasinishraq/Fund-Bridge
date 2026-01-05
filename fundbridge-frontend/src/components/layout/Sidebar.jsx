@@ -50,47 +50,142 @@ const Sidebar = () => {
   const links = NAV_LINKS.filter(
     (link) => !link.roles || (user && link.roles.includes(user.role)),
   )
+  const roleLabel =
+    user?.role === ROLE.LENDER ? 'Lender' : user?.role === ROLE.ADMIN ? 'Admin' : 'Borrower'
+  const walletLinks = links.filter((link) => link.to.includes('wallet'))
+  const adminLinks = links.filter((link) => link.to.includes('admin'))
+  const mainLinks = links.filter(
+    (link) => !link.to.includes('wallet') && !link.to.includes('admin'),
+  )
 
   return (
-    <aside className="sticky top-20 h-[calc(100vh-5rem)] w-full max-w-[270px] rounded-2xl border border-slate-200 bg-white/90 shadow-lg ring-1 ring-slate-100/60">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4">
+    <aside className="flex w-full flex-col gap-4 border border-white/10 bg-gradient-to-b from-[#1f2a5b] via-[#1c2450] to-[#141a38] text-slate-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-64 lg:min-w-[16rem] lg:rounded-none">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
         <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.18em] text-slate-500">FundBridge</p>
-          <p className="text-sm font-semibold text-slate-900">Workspace</p>
+          <p className="text-[0.65rem] uppercase tracking-[0.2em] text-slate-400">Menu</p>
+          <p className="text-sm font-semibold text-white">FundBridge</p>
         </div>
-        <span className="rounded-full bg-indigo-50 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-indigo-700">
-          {user?.role === ROLE.LENDER ? 'Lender' : 'Borrower'}
+        <span className="rounded-full bg-white/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/80">
+          {roleLabel}
         </span>
       </div>
 
-      <nav className="space-y-2 p-3">
-        {links.map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.exact !== false}
-            className={({ isActive }) =>
-              [
-                'group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition',
-                isActive
-                  ? 'bg-indigo-50 text-indigo-800 shadow-sm ring-1 ring-indigo-100'
-                  : 'text-slate-800 hover:-translate-y-[1px] hover:bg-slate-50 hover:text-slate-900',
-              ].join(' ')
-            }
-          >
-            <span
-              className={[
-                'flex h-9 w-9 items-center justify-center rounded-lg border text-slate-500 transition',
-                'border-slate-200 bg-white group-hover:border-indigo-200 group-hover:text-indigo-700',
-              ].join(' ')}
-              aria-hidden="true"
-            >
-              {getIcon(link.to)}
-            </span>
-            <span className="truncate">{link.label}</span>
-          </NavLink>
-        ))}
+      <nav className="flex flex-1 flex-col gap-6 px-3 pb-4">
+        {mainLinks.length > 0 && (
+          <div className="space-y-2">
+            <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
+              Workspace
+            </p>
+            <div className="space-y-1">
+              {mainLinks.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.exact !== false}
+                  className={({ isActive }) =>
+                    [
+                      'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
+                      isActive
+                        ? 'bg-white/10 text-white shadow-sm'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white',
+                    ].join(' ')
+                  }
+                >
+                  <span
+                    className={[
+                      'flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-slate-200 transition',
+                      'group-hover:bg-white/15 group-hover:text-white',
+                    ].join(' ')}
+                    aria-hidden="true"
+                  >
+                    {getIcon(link.to)}
+                  </span>
+                  <span className="truncate">{link.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {walletLinks.length > 0 && (
+          <div className="space-y-2">
+            <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
+              Wallet
+            </p>
+            <div className="space-y-1">
+              {walletLinks.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.exact !== false}
+                  className={({ isActive }) =>
+                    [
+                      'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
+                      isActive
+                        ? 'bg-white/10 text-white shadow-sm'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white',
+                    ].join(' ')
+                  }
+                >
+                  <span
+                    className={[
+                      'flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-slate-200 transition',
+                      'group-hover:bg-white/15 group-hover:text-white',
+                    ].join(' ')}
+                    aria-hidden="true"
+                  >
+                    {getIcon(link.to)}
+                  </span>
+                  <span className="truncate">{link.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {adminLinks.length > 0 && (
+          <div className="space-y-2">
+            <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
+              Admin
+            </p>
+            <div className="space-y-1">
+              {adminLinks.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.exact !== false}
+                  className={({ isActive }) =>
+                    [
+                      'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
+                      isActive
+                        ? 'bg-white/10 text-white shadow-sm'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white',
+                    ].join(' ')
+                  }
+                >
+                  <span
+                    className={[
+                      'flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-slate-200 transition',
+                      'group-hover:bg-white/15 group-hover:text-white',
+                    ].join(' ')}
+                    aria-hidden="true"
+                  >
+                    {getIcon(link.to)}
+                  </span>
+                  <span className="truncate">{link.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
+
+      <div className="px-4 pb-4">
+        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-xs text-slate-200">
+          <p className="font-semibold text-white">Need help?</p>
+          <p className="text-slate-300">support@fundbridge.com</p>
+        </div>
+      </div>
     </aside>
   )
 }
