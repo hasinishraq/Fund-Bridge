@@ -2,6 +2,7 @@ package com.fundbridge.loanmanagementservice.dto;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 public record LoanDetailResponse(
@@ -18,6 +19,12 @@ public record LoanDetailResponse(
         Instant approvedAt,
         Instant activatedAt,
         Instant closedAt,
+        BigDecimal pledgedAmount,
+        BigDecimal capturedAmount,
+        Integer installmentsPaid,
+        Integer installmentsTotal,
+        LocalDate nextDueDate,
+        BigDecimal nextDueAmount,
         List<FundingResponse> fundings,
         List<InstallmentResponse> installments,
         List<LoanEventResponse> events

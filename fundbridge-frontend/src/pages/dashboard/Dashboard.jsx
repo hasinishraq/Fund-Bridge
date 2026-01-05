@@ -71,7 +71,7 @@ const Dashboard = () => {
       }
       try {
         const [loans, wallet] = await Promise.all([
-          fetchLoans(),
+          fetchLoans({ borrowerId: user?.id }),
           fetchWalletBalance({ userId: user?.id }),
         ])
         setState({ loans, wallet })

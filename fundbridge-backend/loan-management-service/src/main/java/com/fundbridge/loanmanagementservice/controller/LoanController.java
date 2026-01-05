@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -43,8 +44,28 @@ public class LoanController {
     }
 
     @GetMapping
-    public ResponseEntity<List<LoanResponse>> list(@RequestParam(value = "borrowerId", required = false) Long borrowerId) {
-        return ResponseEntity.ok(loanService.listLoans(borrowerId));
+    public ResponseEntity<List<LoanResponse>> list(@RequestParam(value = "borrowerId", required = false) Long borrowerId,
+                                                   @RequestParam(value = "scope", required = false) String scope,
+                                                   @RequestParam(value = "status", required = false) String statuses,
+                                                   @RequestParam(value = "query", required = false) String query,
+                                                   @RequestParam(value = "minAmount", required = false) BigDecimal minAmount,
+                                                   @RequestParam(value = "maxAmount", required = false) BigDecimal maxAmount,
+                                                   @RequestParam(value = "minRate", required = false) BigDecimal minRate,
+                                                   @RequestParam(value = "maxRate", required = false) BigDecimal maxRate,
+                                                   @RequestParam(value = "minTenure", required = false) Integer minTenure,
+                                                   @RequestParam(value = "maxTenure", required = false) Integer maxTenure) {
+        return ResponseEntity.ok(loanService.listLoans(
+                borrowerId,
+                scope,
+                statuses,
+                query,
+                minAmount,
+                maxAmount,
+                minRate,
+                maxRate,
+                minTenure,
+                maxTenure
+        ));
     }
 
     @PostMapping
