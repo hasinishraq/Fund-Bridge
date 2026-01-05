@@ -25,3 +25,7 @@ loan:
     credit-score: true
     emi-schedule: true
     funding-match: true
+
+wallet:
+  client:
+    base-url: ${WALLET_SERVICE_URL:http://localhost:8091}

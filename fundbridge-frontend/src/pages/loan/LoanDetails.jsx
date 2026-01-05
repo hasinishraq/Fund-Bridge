@@ -48,6 +48,15 @@ const LoanDetails = () => {
     loadLoan()
   }, [id])
 
+  const offers = useMemo(() => {
+    const fundings = Array.isArray(loan?.fundings) ? loan.fundings : []
+    return [...fundings].sort((a, b) => {
+      const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0
+      const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : 0
+      return bTime - aTime
+    })
+  }, [loan?.fundings])
+
   const summary = useMemo(
     () => [
       {
@@ -56,11 +65,11 @@ const LoanDetails = () => {
       },
       {
         label: 'Tenure',
-        value: loan?.tenureMonths ? `${loan.tenureMonths} months` : '—',
+        value: loan?.tenureMonths ? `${loan.tenureMonths} months` : 'N/A',
       },
       {
         label: 'Status',
-        value: loan?.status || '—',
+        value: loan?.status || 'N/A',
         tone: getStatusTone(loan?.status),
       },
       {
@@ -115,7 +124,7 @@ const LoanDetails = () => {
                 loan.status,
               )}`}
             >
-              {loan.status?.replace(/_/g, ' ') || '—'}
+              {loan.status?.replace(/_/g, ' ') || 'N/A'}
             </span>
             <Link
               to="/loans"
@@ -155,6 +164,82 @@ const LoanDetails = () => {
         <p className="mt-3 text-sm text-slate-700">
           {loan.purpose || 'No purpose provided.'}
         </p>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">
+              Offers
+            </p>
+            <h2 className="text-xl font-semibold text-slate-900">Lender offers</h2>
+            <p className="text-sm text-slate-600">
+              Review every pledge submitted against this loan.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="stat-chip">{offers.length} offers</span>
+            <span className="stat-chip">
+              Pledged {CURRENCY_FORMATTER.format(loan?.pledgedAmount || 0)}
+            </span>
+            <span className="stat-chip">
+              Captured {CURRENCY_FORMATTER.format(loan?.capturedAmount || 0)}
+            </span>
+          </div>
+        </div>
+
+        {offers.length ? (
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Lender
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Amount
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Pledged at
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Captured at
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {offers.map((offer) => (
+                  <tr key={offer.id || `${offer.lenderId}-${offer.createdAt}`}>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                      {offer.lenderId ? `Lender ${offer.lenderId}` : 'Lender'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-900">
+                      {CURRENCY_FORMATTER.format(offer.amount || 0)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-800">
+                      <span className={`status-chip status-${offer.status}`}>
+                        {offer.status || 'UNKNOWN'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {formatDate(offer.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {offer.capturedAt ? formatDate(offer.capturedAt) : 'Not captured'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
+            No offers yet. Share your loan or check back later for lender activity.
+          </div>
+        )}
       </section>
     </div>
   )
