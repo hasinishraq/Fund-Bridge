@@ -95,6 +95,38 @@ const homeContent = {
     copy:
       'Create an account and invite your team for a guided onboarding session tailored to your lending thesis.',
   },
+  faqs: [
+    {
+      question: 'How long does onboarding take?',
+      answer:
+        'Most teams are ready within a day. Add your organisation details, complete KYC, and connect a funding source.',
+    },
+    {
+      question: 'Do borrowers and lenders use the same dashboard?',
+      answer:
+        'Each role has a tailored workspace, but everything lives under one secure FundBridge account.',
+    },
+    {
+      question: 'Which currencies are supported?',
+      answer:
+        'BDT is supported by default. Additional currencies can be enabled once your treasury setup is verified.',
+    },
+    {
+      question: 'How do in-app notifications work?',
+      answer:
+        'Activity alerts appear in the dashboard bell, and your team can configure email or in-app delivery.',
+    },
+    {
+      question: 'What happens if a borrower misses a payment?',
+      answer:
+        'We trigger overdue workflows, notify stakeholders, and keep repayment timelines visible to your team.',
+    },
+    {
+      question: 'Is FundBridge compliant-ready?',
+      answer:
+        'Yes. Automated KYC and audit trails are built in, and reports can be exported for regulators.',
+    },
+  ],
 }
 
 export default homeContent

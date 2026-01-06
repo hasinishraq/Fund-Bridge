@@ -1430,6 +1430,73 @@ table td {
   animation-delay: 0.24s;
 }
 
+@keyframes homeSlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes homeSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes homeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home-slide-left {
+  animation: homeSlideLeft 0.7s ease both;
+}
+
+.home-slide-right {
+  animation: homeSlideRight 0.7s ease both;
+}
+
+.home-slide-up {
+  animation: homeSlideUp 0.6s ease both;
+}
+
+.home-accent-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.home-accent-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(180px 120px at 100% 0%, rgba(31, 42, 91, 0.18), transparent 60%);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-slide-left,
+  .home-slide-right,
+  .home-slide-up {
+    animation: none;
+  }
+}
+
 /* Lender dashboard theme */
 .lender-dashboard {
   --lender-ink: #0b1021;
