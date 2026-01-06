@@ -4,7 +4,10 @@ import com.fundbridge.loanmanagementservice.config.LoanProperties;
 import com.fundbridge.loanmanagementservice.dto.CreateLoanRequest;
 import com.fundbridge.loanmanagementservice.dto.LoanDetailResponse;
 import com.fundbridge.loanmanagementservice.dto.LoanResponse;
+import com.fundbridge.loanmanagementservice.dto.AcceptLoanRequest;
 import com.fundbridge.loanmanagementservice.dto.UpdateLoanStatusRequest;
+import com.fundbridge.loanmanagementservice.dto.FundingResponse;
+import com.fundbridge.loanmanagementservice.dto.CreditScoreResponse;
 import com.fundbridge.loanmanagementservice.entity.Loan;
 import com.fundbridge.loanmanagementservice.entity.LoanEventType;
 import com.fundbridge.loanmanagementservice.entity.LoanFunding;
@@ -13,6 +16,7 @@ import com.fundbridge.loanmanagementservice.entity.LoanInstallment;
 import com.fundbridge.loanmanagementservice.entity.LoanInstallmentStatus;
 import com.fundbridge.loanmanagementservice.entity.LoanStatus;
 import com.fundbridge.loanmanagementservice.exception.BadRequestException;
+import com.fundbridge.loanmanagementservice.exception.ResourceConflictException;
 import com.fundbridge.loanmanagementservice.exception.ResourceNotFoundException;
 import com.fundbridge.loanmanagementservice.repository.LoanRepository;
 import org.springframework.stereotype.Service;
@@ -35,6 +39,7 @@ public class LoanService {
     private final RepaymentService repaymentService;
     private final FundingService fundingService;
     private final LoanEventService loanEventService;
+    private final CreditScoreService creditScoreService;
     private final LoanProperties loanProperties;
 
     public LoanService(LoanRepository loanRepository,
@@ -42,12 +47,14 @@ public class LoanService {
                        RepaymentService repaymentService,
                        FundingService fundingService,
                        LoanEventService loanEventService,
+                       CreditScoreService creditScoreService,
                        LoanProperties loanProperties) {
         this.loanRepository = loanRepository;
         this.emiCalculatorService = emiCalculatorService;
         this.repaymentService = repaymentService;
         this.fundingService = fundingService;
         this.loanEventService = loanEventService;
+        this.creditScoreService = creditScoreService;
         this.loanProperties = loanProperties;
     }
 
@@ -62,9 +69,6 @@ public class LoanService {
         loan.setPurpose(request.purpose());
         loan.setStatus(LoanStatus.REQUESTED);
         loanRepository.save(loan);
-
-        repaymentService.createSchedule(loan,
-                emiCalculatorService.buildSchedule(loan.getAmount(), loan.getInterestRate(), loan.getTermMonths()));
 
         loanEventService.record(loan, LoanEventType.CREATED, loan.getBorrowerUserId(), "Loan requested");
         return toResponse(loan);
@@ -106,6 +110,7 @@ public class LoanService {
         Loan loan = loanRepository.findById(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan not found"));
         LoanAggregate aggregates = computeAggregates(loan);
+        CreditScoreResponse creditScore = resolveCreditScore(loan);
         return new LoanDetailResponse(
                 loan.getId(),
                 loan.getBorrowerUserId(),
@@ -128,7 +133,10 @@ public class LoanService {
                 aggregates.nextDueAmount(),
                 fundingService.listFundingsForLoan(loanId),
                 repaymentService.listInstallments(loanId),
-                loanEventService.listForLoan(loanId)
+                loanEventService.listForLoan(loanId),
+                creditScore != null ? creditScore.score() : null,
+                creditScore != null ? creditScore.grade() : null,
+                creditScore != null ? creditScore.lastUpdated() : null
         );
     }
 
@@ -137,17 +145,25 @@ public class LoanService {
         Loan loan = loanRepository.findById(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan not found"));
         LoanStatus targetStatus = parseStatus(request.status());
+        if (targetStatus == LoanStatus.ACTIVE) {
+            return acceptLoan(loanId, new AcceptLoanRequest(null));
+        }
+        if (targetStatus == LoanStatus.FUNDED) {
+            BigDecimal committed = fundingService.getCommittedAmount(loanId);
+            if (committed.compareTo(loan.getAmount()) < 0) {
+                throw new ResourceConflictException("Loan is not fully funded");
+            }
+        }
         loan.setStatus(targetStatus);
         Instant now = Instant.now();
         switch (targetStatus) {
-            case APPROVED -> loan.setApprovedAt(now);
-            case FUNDED, ACTIVE -> loan.setActivatedAt(now);
+            case APPROVED, FUNDING -> loan.setApprovedAt(now);
             case CLOSED, DEFAULTED, REJECTED -> loan.setClosedAt(now);
             default -> { }
         }
         LoanEventType eventType = switch (targetStatus) {
             case REQUESTED -> LoanEventType.CREATED;
-            case APPROVED -> LoanEventType.APPROVED;
+            case APPROVED, FUNDING -> LoanEventType.APPROVED;
             case FUNDED -> LoanEventType.FUNDED;
             case DEFAULTED -> LoanEventType.DEFAULTED;
             default -> null;
@@ -156,6 +172,53 @@ public class LoanService {
             loanEventService.record(loan, eventType, null, "Status updated to " + targetStatus);
         }
         return toResponse(loanRepository.save(loan));
+    }
+
+    @Transactional
+    public LoanResponse acceptLoan(Long loanId, AcceptLoanRequest request) {
+        Loan loan = loanRepository.findById(loanId)
+                .orElseThrow(() -> new ResourceNotFoundException("Loan not found"));
+        if (loan.getStatus() == LoanStatus.CLOSED || loan.getStatus() == LoanStatus.DEFAULTED
+                || loan.getStatus() == LoanStatus.REJECTED) {
+            throw new ResourceConflictException("Loan cannot be accepted in its current state");
+        }
+        Long borrowerId = request != null ? request.borrowerId() : null;
+        if (borrowerId != null && !borrowerId.equals(loan.getBorrowerUserId())) {
+            throw new BadRequestException("Borrower does not match this loan");
+        }
+        Long resolvedBorrowerId = borrowerId != null ? borrowerId : loan.getBorrowerUserId();
+        if (loan.getStatus() == LoanStatus.ACTIVE) {
+            return toResponse(loan);
+        }
+        List<FundingResponse> fundings = fundingService.listFundingsForLoan(loanId);
+        BigDecimal committed = fundings.stream()
+                .filter(funding -> isCommittedFunding(funding.status()))
+                .map(FundingResponse::amount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+        if (committed.compareTo(loan.getAmount()) < 0) {
+            throw new ResourceConflictException("Loan is not fully funded");
+        }
+        if (loan.getStatus() != LoanStatus.FUNDED) {
+            loan.setStatus(LoanStatus.FUNDED);
+            loanRepository.save(loan);
+            loanEventService.record(loan, LoanEventType.FUNDED, null,
+                    "Loan fully funded with total " + committed);
+        }
+        for (FundingResponse funding : fundings) {
+            if (LoanFundingStatus.PLEDGED.name().equalsIgnoreCase(funding.status())) {
+                fundingService.disburseFunding(funding.id(), resolvedBorrowerId);
+            }
+        }
+        repaymentService.createSchedule(loan,
+                emiCalculatorService.buildSchedule(loan.getAmount(), loan.getInterestRate(), loan.getTermMonths()));
+        loan.setStatus(LoanStatus.ACTIVE);
+        loan.setActivatedAt(Instant.now());
+        loanRepository.save(loan);
+        loanEventService.record(loan, LoanEventType.ACTIVATED, resolvedBorrowerId,
+                "Loan accepted and activated");
+        return toResponse(loan);
     }
 
     private List<LoanStatus> parseStatusFilter(String statuses) {
@@ -189,7 +252,7 @@ public class LoanService {
             if ("PENDING".equals(normalized)) {
                 normalized = "REQUESTED";
             } else if ("DISBURSED".equals(normalized)) {
-                normalized = "FUNDED";
+                normalized = "ACTIVE";
             }
             return LoanStatus.valueOf(normalized);
         } catch (Exception ex) {
@@ -280,6 +343,7 @@ public class LoanService {
     }
 
     private LoanResponse toResponse(Loan loan, LoanAggregate aggregates) {
+        CreditScoreResponse creditScore = resolveCreditScore(loan);
         return new LoanResponse(
                 loan.getId(),
                 loan.getBorrowerUserId(),
@@ -299,7 +363,10 @@ public class LoanService {
                 aggregates.installmentsPaid(),
                 aggregates.installmentsTotal(),
                 aggregates.nextDueDate(),
-                aggregates.nextDueAmount()
+                aggregates.nextDueAmount(),
+                creditScore != null ? creditScore.score() : null,
+                creditScore != null ? creditScore.grade() : null,
+                creditScore != null ? creditScore.lastUpdated() : null
         );
     }
 
@@ -307,11 +374,26 @@ public class LoanService {
         if (status == null) {
             return null;
         }
-        return switch (status) {
-            case REQUESTED -> "PENDING";
-            case FUNDED -> "DISBURSED";
-            default -> status.name();
-        };
+        return status.name();
+    }
+
+    private CreditScoreResponse resolveCreditScore(Loan loan) {
+        if (loan == null) {
+            return null;
+        }
+        return creditScoreService.getScoreForUser(loan.getBorrowerUserId());
+    }
+
+    private boolean isCommittedFunding(String status) {
+        if (status == null) {
+            return false;
+        }
+        try {
+            LoanFundingStatus fundingStatus = LoanFundingStatus.valueOf(status);
+            return fundingStatus != LoanFundingStatus.CANCELED && fundingStatus != LoanFundingStatus.REFUNDED;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 
     private LoanAggregate computeAggregates(Loan loan) {

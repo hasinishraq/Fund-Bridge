@@ -394,6 +394,18 @@ const LoanMarketplace = () => {
                     <strong>{loan.tenureMonths || '--'}m</strong>
                   </div>
                   <div>
+                    <small>Borrower</small>
+                    <strong>{loan.borrowerId ? `#${loan.borrowerId}` : '--'}</strong>
+                  </div>
+                  <div>
+                    <small>Risk score</small>
+                    <strong>
+                      {loan.creditScore
+                        ? `${loan.creditScore}${loan.creditGrade ? ` (${loan.creditGrade})` : ''}`
+                        : '--'}
+                    </strong>
+                  </div>
+                  <div>
                     <span className={`status-chip status-${loan.status}`}>
                       {humanizeStatus(loan.status)}
                     </span>

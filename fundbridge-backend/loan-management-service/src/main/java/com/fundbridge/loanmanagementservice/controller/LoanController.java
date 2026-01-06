@@ -1,6 +1,7 @@
 package com.fundbridge.loanmanagementservice.controller;
 
 import com.fundbridge.loanmanagementservice.dto.CreateLoanRequest;
+import com.fundbridge.loanmanagementservice.dto.AcceptLoanRequest;
 import com.fundbridge.loanmanagementservice.dto.EmiScheduleItem;
 import com.fundbridge.loanmanagementservice.dto.EmiScheduleRequest;
 import com.fundbridge.loanmanagementservice.dto.InstallmentResponse;
@@ -82,6 +83,13 @@ public class LoanController {
     public ResponseEntity<LoanResponse> updateStatus(@PathVariable Long loanId,
                                                      @Valid @RequestBody UpdateLoanStatusRequest request) {
         return ResponseEntity.ok(loanService.updateStatus(loanId, request));
+    }
+
+    @PostMapping("/{loanId}/accept")
+    public ResponseEntity<LoanResponse> accept(@PathVariable Long loanId,
+                                               @RequestBody(required = false) AcceptLoanRequest request) {
+        AcceptLoanRequest payload = request != null ? request : new AcceptLoanRequest(null);
+        return ResponseEntity.ok(loanService.acceptLoan(loanId, payload));
     }
 
     @GetMapping("/{loanId}/installments")
