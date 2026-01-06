@@ -311,7 +311,7 @@ const Dashboard = () => {
                 href={user.kycReviewUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white shadow-sm transition hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-amber-200"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1f2a5b] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
               >
                 Continue verification
               </a>
@@ -320,7 +320,7 @@ const Dashboard = () => {
               type="button"
               onClick={handleRefreshKyc}
               disabled={kycRefreshing}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-amber-700 transition hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#1f2a5b] transition hover:-translate-y-[1px] hover:border-[#1f2a5b] hover:text-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {kycRefreshing ? 'Refreshing...' : 'Refresh status'}
             </button>
@@ -687,7 +687,7 @@ const Dashboard = () => {
               </Link>
               <Link
                 to="/loans/apply"
-                className="rounded-full bg-slate-900 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-white"
+                className="rounded-full bg-[#1f2a5b] px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-[#23306b]"
               >
                 New request
               </Link>
