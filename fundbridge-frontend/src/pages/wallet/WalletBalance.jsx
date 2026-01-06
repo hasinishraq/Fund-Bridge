@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import {
+  confirmStripePayment,
   createSslcommerzTopUpIntent,
   createStripeTopUpIntent,
   fetchWalletBalance,
@@ -135,6 +136,45 @@ const WalletBalance = () => {
   const handlePaymentError = (message) => {
     setFormStatus(API_STATUS.error)
     setFormMessage(message || 'Unable to complete payment')
+  }
+
+  const handleStripeConfirm = async (paymentIntent) => {
+    const paymentIntentId = paymentIntent?.id || stripeIntent?.paymentIntentId
+    if (!paymentIntentId) {
+      handlePaymentError('Missing Stripe payment intent id.')
+      return
+    }
+    setFormStatus(API_STATUS.loading)
+    setFormMessage('Confirming Stripe payment...')
+    try {
+      const response = await confirmStripePayment({
+        paymentIntentId,
+        userId: user?.id,
+      })
+      if (response?.status === 'SUCCEEDED') {
+        await handlePaymentSuccess()
+        return
+      }
+      setFormStatus(API_STATUS.success)
+      setFormMessage(
+        response?.status
+          ? `Payment status: ${response.status}. Wallet will update shortly.`
+          : 'Payment captured. Wallet will update shortly.',
+      )
+      setStripeIntent(null)
+      setSslIntent(null)
+      setSslConfirming(false)
+      setAmount('')
+      setIdempotencyKey(buildIdempotencyKey())
+    } catch (error) {
+      console.error(error)
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Unable to confirm Stripe payment right now'
+      setFormStatus(API_STATUS.error)
+      setFormMessage(message)
+    }
   }
 
   const handleTopUp = async (event) => {
@@ -551,7 +591,7 @@ const WalletBalance = () => {
               >
                 <StripePaymentForm
                   intent={stripeIntent}
-                  onSuccess={handlePaymentSuccess}
+                  onSuccess={handleStripeConfirm}
                   onError={handlePaymentError}
                 />
               </Elements>
