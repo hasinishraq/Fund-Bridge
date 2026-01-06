@@ -23,6 +23,9 @@ public record LoanResponse(
         Integer installmentsPaid,
         Integer installmentsTotal,
         LocalDate nextDueDate,
-        BigDecimal nextDueAmount
+        BigDecimal nextDueAmount,
+        Integer creditScore,
+        String creditGrade,
+        Instant creditScoreUpdatedAt
 ) {
 }

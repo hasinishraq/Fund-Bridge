@@ -9,6 +9,7 @@ import com.fundbridge.loanmanagementservice.exception.ResourceNotFoundException;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.CaptureHoldRequest;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.CreateHoldRequest;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.ReleaseHoldRequest;
+import com.fundbridge.loanmanagementservice.integration.wallet.dto.TransferRequest;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletHoldResponse;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletSummaryResponse;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletTransactionResponse;
@@ -88,6 +89,20 @@ public class WalletClient {
             return restTemplate.postForObject(uri, request, WalletTransactionResponse.class);
         } catch (HttpStatusCodeException ex) {
             throw translateException(ex, "Failed to capture wallet hold");
+        } catch (RestClientException ex) {
+            throw new BadRequestException("Wallet service unavailable");
+        }
+    }
+
+    public WalletTransactionResponse transfer(TransferRequest request) {
+        URI uri = UriComponentsBuilder.fromHttpUrl(properties.getBaseUrl())
+                .path("/wallet/transfer")
+                .build()
+                .toUri();
+        try {
+            return restTemplate.postForObject(uri, request, WalletTransactionResponse.class);
+        } catch (HttpStatusCodeException ex) {
+            throw translateException(ex, "Failed to transfer funds");
         } catch (RestClientException ex) {
             throw new BadRequestException("Wallet service unavailable");
         }
