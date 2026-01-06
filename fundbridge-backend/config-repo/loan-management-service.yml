@@ -25,7 +25,13 @@ loan:
     credit-score: true
     emi-schedule: true
     funding-match: true
+  notifications:
+    scan-interval-ms: ${LOAN_NOTIFICATION_SCAN_MS:3600000}
 
 wallet:
   client:
     base-url: ${WALLET_SERVICE_URL:http://localhost:8091}
+
+notification:
+  client:
+    base-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8093}

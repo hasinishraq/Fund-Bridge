@@ -114,7 +114,7 @@ public class AuthService {
                 log.info("Skipping password reset OTP for disabled account {}", normalizedEmail);
                 return;
             }
-            otpService.sendPasswordResetOtp(normalizedEmail);
+            otpService.sendPasswordResetOtp(normalizedEmail, user.getId());
         }, () -> log.info("Password reset requested for non-existing email {}", normalizedEmail));
     }
 

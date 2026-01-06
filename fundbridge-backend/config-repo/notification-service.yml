@@ -1,0 +1,31 @@
+server:
+  port: ${NOTIFICATION_SERVICE_PORT:8093}
+
+spring:
+  datasource:
+    url: ${NOTIFICATION_DB_URL:jdbc:mysql://localhost:3306/notification_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+    username: ${NOTIFICATION_DB_USERNAME:}
+    password: ${NOTIFICATION_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${NOTIFICATION_JPA_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+notification:
+  outbox:
+    poll-interval-ms: ${NOTIFICATION_OUTBOX_POLL_MS:5000}
+    batch-size: ${NOTIFICATION_OUTBOX_BATCH_SIZE:50}
+    max-attempts: ${NOTIFICATION_OUTBOX_MAX_ATTEMPTS:3}
+    retry-delay-ms: ${NOTIFICATION_OUTBOX_RETRY_DELAY_MS:30000}
+
+brevo:
+  enabled: ${BREVO_ENABLED:true}
+  api-key: ${BREVO_API_KEY:}
+  base-url: ${BREVO_BASE_URL:https://api.brevo.com}
+  from-email: ${BREVO_FROM_EMAIL:no-reply@notification.local}
+  from-name: ${BREVO_FROM_NAME:FundBridge}
+  default-subject: ${BREVO_DEFAULT_SUBJECT:FundBridge notification}

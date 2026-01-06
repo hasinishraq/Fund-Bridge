@@ -45,16 +45,19 @@ public class SslcommerzPaymentService {
 
     private final SslcommerzProperties sslProps;
     private final WalletService walletService;
+    private final WalletNotificationService walletNotificationService;
     private final WalletPaymentIntentRepository paymentIntentRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
     public SslcommerzPaymentService(SslcommerzProperties sslProps,
                                     WalletService walletService,
+                                    WalletNotificationService walletNotificationService,
                                     WalletPaymentIntentRepository paymentIntentRepository,
                                     ObjectMapper objectMapper) {
         this.sslProps = sslProps;
         this.walletService = walletService;
+        this.walletNotificationService = walletNotificationService;
         this.paymentIntentRepository = paymentIntentRepository;
         this.objectMapper = objectMapper;
         this.restTemplate = new RestTemplate();
@@ -150,6 +153,16 @@ public class SslcommerzPaymentService {
             }
         }
         paymentIntentRepository.save(intent);
+        if (status == PaymentIntentStatus.CANCELED) {
+            walletNotificationService.notifyTopUpFailure(
+                    intent.getUserId(),
+                    intent.getAmount(),
+                    intent.getCurrency(),
+                    PROVIDER_NAME,
+                    tranId,
+                    validation.status()
+            );
+        }
 
         return new SslcommerzPaymentIntentResponse(
                 tranId,
