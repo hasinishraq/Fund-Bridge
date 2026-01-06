@@ -278,8 +278,8 @@ const LenderDashboard = () => {
   }
 
   return (
-    <div className="dashboard">
-      <section className="dashboard-hero lender-hero">
+    <div className="dashboard lender-dashboard flowdash">
+      <section className="dashboard-hero lender-hero flow-stagger">
         <div className="hero-copy">
           <p className="eyebrow">Welcome back, {heroName}</p>
           <h1>Deploy capital with precision</h1>
@@ -367,7 +367,7 @@ const LenderDashboard = () => {
         </div>
       </section>
 
-      <div className="dashboard-metrics">
+      <div className="dashboard-metrics flow-stagger">
         <article className="metric-card">
           <p>Active exposure</p>
           <h3>{CURRENCY_FORMATTER.format(activeExposure)}</h3>
@@ -398,7 +398,7 @@ const LenderDashboard = () => {
         </article>
       </div>
 
-      <div className="dashboard-columns">
+      <div className="dashboard-columns flow-stagger">
         <section className="panel">
           <div className="panel-header">
             <div>
@@ -509,7 +509,7 @@ const LenderDashboard = () => {
         </section>
       </div>
 
-      <div className="dashboard-columns secondary">
+      <div className="dashboard-columns secondary flow-stagger">
         <section className="panel">
           <div className="panel-header">
             <div>
@@ -518,7 +518,7 @@ const LenderDashboard = () => {
             </div>
           </div>
           {borrowerLeaderboard.length ? (
-            <table>
+            <table className="leaderboard-table">
               <thead>
                 <tr>
                   <th>Borrower</th>
