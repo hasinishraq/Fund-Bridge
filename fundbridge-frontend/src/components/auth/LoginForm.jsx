@@ -145,7 +145,7 @@ const LoginForm = ({ onSubmit, loading }) => {
           <button
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
-            className="absolute inset-y-0 right-0 px-3 text-xs font-semibold text-indigo-700"
+            className="absolute inset-y-0 right-0 px-3 text-xs font-semibold text-[#1f2a5b] hover:text-[#23306b]"
           >
             {showPassword ? 'Hide' : 'Show'}
           </button>
@@ -172,7 +172,7 @@ const LoginForm = ({ onSubmit, loading }) => {
       <button
         type="submit"
         disabled={isSubmitDisabled}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1f2a5b] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? 'Signing in...' : 'Sign in'}
       </button>
