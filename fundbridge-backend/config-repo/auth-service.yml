@@ -53,3 +53,7 @@ sumsub:
   level-name: ${SUMSUB_LEVEL_NAME:id-only}
   websdk-ttl-seconds: ${SUMSUB_WEBSDK_TTL_SECONDS:900}
   stub-review-url: ${SUMSUB_STUB_REVIEW_URL:https://kyc-demo.localhost/continue}
+
+notification:
+  client:
+    base-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8093}

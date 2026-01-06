@@ -45,3 +45,7 @@ storage:
   paths:
     statements: ${STORAGE_STATEMENTS_PATH:statements}
     receipts: ${STORAGE_RECEIPTS_PATH:receipts}
+
+notification:
+  client:
+    base-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8093}

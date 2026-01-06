@@ -46,15 +46,18 @@ public class StripePaymentService {
 
     private final StripeProperties stripeProperties;
     private final WalletService walletService;
+    private final WalletNotificationService walletNotificationService;
     private final WalletPaymentIntentRepository paymentIntentRepository;
     private final ObjectMapper objectMapper;
 
     public StripePaymentService(StripeProperties stripeProperties,
                                 WalletService walletService,
+                                WalletNotificationService walletNotificationService,
                                 WalletPaymentIntentRepository paymentIntentRepository,
                                 ObjectMapper objectMapper) {
         this.stripeProperties = stripeProperties;
         this.walletService = walletService;
+        this.walletNotificationService = walletNotificationService;
         this.paymentIntentRepository = paymentIntentRepository;
         this.objectMapper = objectMapper;
         if (StringUtils.hasText(stripeProperties.getSecretKey())) {
@@ -304,6 +307,16 @@ public class StripePaymentService {
         }
 
         paymentIntentRepository.save(record);
+        if (status == PaymentIntentStatus.CANCELED || status == PaymentIntentStatus.FAILED) {
+            walletNotificationService.notifyTopUpFailure(
+                    userId,
+                    amount,
+                    currency,
+                    "STRIPE",
+                    paymentIntentId,
+                    status.name()
+            );
+        }
     }
 
     private PaymentIntent retrievePaymentIntent(String paymentIntentId) {

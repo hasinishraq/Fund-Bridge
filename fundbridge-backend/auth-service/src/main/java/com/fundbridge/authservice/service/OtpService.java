@@ -24,24 +24,37 @@ public class OtpService {
     private final OtpCodeRepository otpCodeRepository;
     private final HashService hashService;
     private final BrevoEmailService brevoEmailService;
+    private final AuthNotificationService authNotificationService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public OtpService(OtpCodeRepository otpCodeRepository,
                       HashService hashService,
-                      BrevoEmailService brevoEmailService) {
+                      BrevoEmailService brevoEmailService,
+                      AuthNotificationService authNotificationService) {
         this.otpCodeRepository = otpCodeRepository;
         this.hashService = hashService;
         this.brevoEmailService = brevoEmailService;
+        this.authNotificationService = authNotificationService;
     }
 
     @Transactional
     public void sendEmailVerificationOtp(String email) {
-        sendOtp(email, OtpPurpose.EMAIL_VERIFY);
+        sendEmailVerificationOtp(email, null);
     }
 
     @Transactional
     public void sendPasswordResetOtp(String email) {
-        sendOtp(email, OtpPurpose.PASSWORD_RESET);
+        sendPasswordResetOtp(email, null);
+    }
+
+    @Transactional
+    public void sendEmailVerificationOtp(String email, Long userId) {
+        sendOtp(email, OtpPurpose.EMAIL_VERIFY, userId);
+    }
+
+    @Transactional
+    public void sendPasswordResetOtp(String email, Long userId) {
+        sendOtp(email, OtpPurpose.PASSWORD_RESET, userId);
     }
 
     @Transactional
@@ -54,7 +67,7 @@ public class OtpService {
         verifyOtp(email, otp, OtpPurpose.PASSWORD_RESET);
     }
 
-    private void sendOtp(String email, OtpPurpose purpose) {
+    private void sendOtp(String email, OtpPurpose purpose, Long userId) {
         String sanitizedEmail = sanitizeEmail(email);
         if (sanitizedEmail == null || sanitizedEmail.isBlank()) {
             throw new IllegalArgumentException("Email is required for OTP");
@@ -67,6 +80,7 @@ public class OtpService {
         code.setExpiresAt(Instant.now().plus(OTP_TTL));
         otpCodeRepository.save(code);
         brevoEmailService.sendOtpEmail(sanitizedEmail, otp, OTP_TTL.toMinutes());
+        authNotificationService.notifyOtpInApp(userId, purpose, otp, OTP_TTL.toMinutes());
         log.info("Dispatched {} OTP for {}", purpose, sanitizedEmail);
     }
 

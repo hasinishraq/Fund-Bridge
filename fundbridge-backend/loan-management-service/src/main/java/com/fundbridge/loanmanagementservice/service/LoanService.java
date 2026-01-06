@@ -39,6 +39,7 @@ public class LoanService {
     private final RepaymentService repaymentService;
     private final FundingService fundingService;
     private final LoanEventService loanEventService;
+    private final LoanNotificationService loanNotificationService;
     private final CreditScoreService creditScoreService;
     private final LoanProperties loanProperties;
 
@@ -47,6 +48,7 @@ public class LoanService {
                        RepaymentService repaymentService,
                        FundingService fundingService,
                        LoanEventService loanEventService,
+                       LoanNotificationService loanNotificationService,
                        CreditScoreService creditScoreService,
                        LoanProperties loanProperties) {
         this.loanRepository = loanRepository;
@@ -54,6 +56,7 @@ public class LoanService {
         this.repaymentService = repaymentService;
         this.fundingService = fundingService;
         this.loanEventService = loanEventService;
+        this.loanNotificationService = loanNotificationService;
         this.creditScoreService = creditScoreService;
         this.loanProperties = loanProperties;
     }
@@ -71,6 +74,7 @@ public class LoanService {
         loanRepository.save(loan);
 
         loanEventService.record(loan, LoanEventType.CREATED, loan.getBorrowerUserId(), "Loan requested");
+        loanNotificationService.notifyLoanSubmitted(loan);
         return toResponse(loan);
     }
 
@@ -171,7 +175,13 @@ public class LoanService {
         if (eventType != null) {
             loanEventService.record(loan, eventType, null, "Status updated to " + targetStatus);
         }
-        return toResponse(loanRepository.save(loan));
+        Loan saved = loanRepository.save(loan);
+        if (targetStatus == LoanStatus.APPROVED) {
+            loanNotificationService.notifyLoanApproved(saved);
+        } else if (targetStatus == LoanStatus.REJECTED) {
+            loanNotificationService.notifyLoanRejected(saved);
+        }
+        return toResponse(saved);
     }
 
     @Transactional
@@ -218,6 +228,7 @@ public class LoanService {
         loanRepository.save(loan);
         loanEventService.record(loan, LoanEventType.ACTIVATED, resolvedBorrowerId,
                 "Loan accepted and activated");
+        loanNotificationService.notifyLoanDisbursed(loan);
         return toResponse(loan);
     }
 

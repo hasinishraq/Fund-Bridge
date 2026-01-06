@@ -29,3 +29,7 @@ app:
     allowed-headers: Authorization,Content-Type
     exposed-headers: Authorization
     allow-credentials: true
+
+notification:
+  client:
+    base-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8093}
