@@ -503,6 +503,18 @@ table td {
   background: #fffbeb;
 }
 
+.status-chip.status-REQUESTED {
+  border-color: #f59e0b;
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.status-chip.status-FUNDING {
+  border-color: #f59e0b;
+  color: #92400e;
+  background: #fffbeb;
+}
+
 .status-chip.status-REJECTED {
   border-color: #dc2626;
   color: #991b1b;
@@ -513,6 +525,30 @@ table td {
   border-color: #2563eb;
   color: #1d4ed8;
   background: #eef2ff;
+}
+
+.status-chip.status-FUNDED {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background: #eef2ff;
+}
+
+.status-chip.status-ACTIVE {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background: #eef2ff;
+}
+
+.status-chip.status-DEFAULTED {
+  border-color: #dc2626;
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.status-chip.status-CLOSED {
+  border-color: #94a3b8;
+  color: #475569;
+  background: #f1f5f9;
 }
 
 .loader {
@@ -1079,12 +1115,36 @@ table td {
   border-color: rgba(245, 158, 11, 0.35);
 }
 
+.status-chip.status-REQUESTED {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.status-chip.status-FUNDING {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
 .status-chip.status-DISBURSED {
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.status-chip.status-FUNDED {
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.status-chip.status-ACTIVE {
   border-color: rgba(37, 99, 235, 0.35);
 }
 
 .status-chip.status-REJECTED {
   border-color: rgba(220, 38, 38, 0.35);
+}
+
+.status-chip.status-DEFAULTED {
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.status-chip.status-CLOSED {
+  border-color: rgba(148, 163, 184, 0.6);
 }
 
 /* ---------------------------
@@ -1665,7 +1725,31 @@ table td {
   border-color: rgba(251, 191, 36, 0.35);
 }
 
+.lender-dashboard .status-chip.status-REQUESTED {
+  background: rgba(251, 191, 36, 0.18);
+  color: #92400e;
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.lender-dashboard .status-chip.status-FUNDING {
+  background: rgba(251, 191, 36, 0.18);
+  color: #92400e;
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
 .lender-dashboard .status-chip.status-DISBURSED {
+  background: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.lender-dashboard .status-chip.status-FUNDED {
+  background: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.lender-dashboard .status-chip.status-ACTIVE {
   background: rgba(59, 130, 246, 0.18);
   color: #1d4ed8;
   border-color: rgba(59, 130, 246, 0.35);
@@ -1675,6 +1759,18 @@ table td {
   background: rgba(248, 113, 113, 0.18);
   color: #b91c1c;
   border-color: rgba(248, 113, 113, 0.35);
+}
+
+.lender-dashboard .status-chip.status-DEFAULTED {
+  background: rgba(248, 113, 113, 0.18);
+  color: #b91c1c;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.lender-dashboard .status-chip.status-CLOSED {
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+  border-color: rgba(148, 163, 184, 0.35);
 }
 
 .lender-dashboard .lender-hero .status-chip {

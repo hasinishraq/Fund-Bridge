@@ -61,3 +61,9 @@ export const updateLoanStatus = async ({ loanId, status }) => {
   const { data } = await client.patch(`/loans/${loanId}`, { status })
   return data
 }
+
+export const acceptLoan = async ({ loanId, borrowerId }) => {
+  const payload = borrowerId ? { borrowerId } : undefined
+  const { data } = await client.post(`/loans/${loanId}/accept`, payload)
+  return data
+}

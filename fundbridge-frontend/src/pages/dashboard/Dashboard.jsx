@@ -25,9 +25,13 @@ const humanizeStatus = (status) => (status ? status.replace(/_/g, ' ') : 'N/A')
 const statusToneMap = {
   APPROVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  REQUESTED: 'bg-amber-50 text-amber-700 border border-amber-200',
+  FUNDING: 'bg-amber-50 text-amber-700 border border-amber-200',
   REJECTED: 'bg-rose-50 text-rose-700 border border-rose-200',
   RESUBMIT_REQUIRED: 'bg-amber-50 text-amber-700 border border-amber-200',
   DISBURSED: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  FUNDED: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  ACTIVE: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
   default: 'bg-slate-50 text-slate-700 border border-slate-200',
 }
 
@@ -146,11 +150,17 @@ const Dashboard = () => {
     'Complete identity verification to access all FundBridge services.'
 
   const disbursedLoans = useMemo(
-    () => state.loans?.filter((loan) => loan.status === 'DISBURSED') || [],
+    () =>
+      state.loans?.filter((loan) =>
+        ['ACTIVE', 'DISBURSED'].includes(loan.status),
+      ) || [],
     [state.loans],
   )
   const pendingLoans = useMemo(
-    () => state.loans?.filter((loan) => loan.status === 'PENDING') || [],
+    () =>
+      state.loans?.filter((loan) =>
+        ['REQUESTED', 'PENDING'].includes(loan.status),
+      ) || [],
     [state.loans],
   )
   const walletBalance = state.wallet?.balance ?? 0

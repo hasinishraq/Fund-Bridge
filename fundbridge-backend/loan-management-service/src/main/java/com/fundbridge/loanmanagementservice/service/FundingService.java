@@ -16,6 +16,7 @@ import com.fundbridge.loanmanagementservice.integration.wallet.WalletClient;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.CaptureHoldRequest;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.CreateHoldRequest;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.ReleaseHoldRequest;
+import com.fundbridge.loanmanagementservice.integration.wallet.dto.TransferRequest;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletHoldResponse;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletSummaryResponse;
 import com.fundbridge.loanmanagementservice.integration.wallet.dto.WalletTransactionResponse;
@@ -64,19 +65,25 @@ public class FundingService {
     public FundingResponse createFunding(CreateFundingRequest request) {
         Loan loan = loanRepository.findById(request.loanId())
                 .orElseThrow(() -> new ResourceNotFoundException("Loan not found"));
-        if (loan.getStatus() == LoanStatus.REJECTED || loan.getStatus() == LoanStatus.DEFAULTED
-                || loan.getStatus() == LoanStatus.CLOSED) {
-            throw new ResourceConflictException("Cannot fund a closed or rejected loan");
-        }
-
         String idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey());
         Optional<LoanFunding> existing = fundingRepository.findByIdempotencyKey(idempotencyKey);
         if (existing.isPresent()) {
             return toResponse(existing.get());
         }
+        if (!isFundingOpen(loan.getStatus())) {
+            throw new ResourceConflictException("Loan is not open for funding");
+        }
 
         Long lenderId = resolveLenderId(request.lenderId());
         BigDecimal amount = normalizeAmount(request.amount());
+        BigDecimal committed = calculateCommittedAmount(loan.getId());
+        BigDecimal remaining = loan.getAmount().subtract(committed).setScale(2, RoundingMode.HALF_UP);
+        if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResourceConflictException("Loan is already fully funded");
+        }
+        if (amount.compareTo(remaining) > 0) {
+            throw new BadRequestException("Funding exceeds remaining amount");
+        }
         WalletHoldResponse hold = createFundingHold(loan, lenderId, amount, idempotencyKey);
 
         LoanFunding funding = new LoanFunding();
@@ -92,10 +99,7 @@ public class FundingService {
             safeReleaseHold(hold);
             throw ex;
         }
-        if (loan.getStatus() == LoanStatus.REQUESTED || loan.getStatus() == LoanStatus.APPROVED) {
-            loan.setStatus(LoanStatus.FUNDING);
-            loanRepository.save(loan);
-        }
+        refreshLoanFundingStatus(loan, committed.add(amount));
         return toResponse(funding);
     }
 
@@ -103,6 +107,10 @@ public class FundingService {
     public FundingResponse captureFunding(Long fundingId, FundingActionRequest request) {
         LoanFunding funding = fundingRepository.findById(fundingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Funding not found"));
+        Loan loan = funding.getLoan();
+        if (loan != null && !isCaptureAllowed(loan.getStatus())) {
+            throw new ResourceConflictException("Funding can only be captured for funded loans");
+        }
         if (funding.getStatus() == LoanFundingStatus.CANCELED) {
             throw new ResourceConflictException("Funding pledge already canceled");
         }
@@ -129,7 +137,59 @@ public class FundingService {
             funding.setWalletTxRef(request.walletTxRef());
         }
         fundingRepository.save(funding);
-        maybeMarkLoanFunded(funding.getLoan());
+        refreshLoanFundingStatus(loan, calculateCommittedAmount(loan != null ? loan.getId() : null));
+        return toResponse(funding);
+    }
+
+    @Transactional
+    public FundingResponse disburseFunding(Long fundingId, Long borrowerId) {
+        LoanFunding funding = fundingRepository.findById(fundingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Funding not found"));
+        Loan loan = funding.getLoan();
+        if (loan == null) {
+            throw new ResourceNotFoundException("Loan not found for funding");
+        }
+        if (loan.getStatus() != LoanStatus.FUNDED && loan.getStatus() != LoanStatus.ACTIVE) {
+            throw new ResourceConflictException("Loan is not ready for disbursement");
+        }
+        if (funding.getStatus() == LoanFundingStatus.CANCELED) {
+            throw new ResourceConflictException("Funding pledge already canceled");
+        }
+        if (funding.getStatus() == LoanFundingStatus.CAPTURED) {
+            return toResponse(funding);
+        }
+        Long resolvedBorrowerId = borrowerId != null ? borrowerId : loan.getBorrowerUserId();
+        if (resolvedBorrowerId == null) {
+            throw new BadRequestException("Borrower id is required for disbursement");
+        }
+        Long holdId = parseHoldId(funding.getWalletTxRef());
+        if (holdId != null) {
+            safeReleaseHold(holdId, "Disbursing loan funding");
+        }
+        String currency = resolveCurrency(loan);
+        WalletSummaryResponse lenderWallet = walletClient.getWallet(funding.getLenderUserId(), currency);
+        WalletSummaryResponse borrowerWallet = walletClient.getWallet(resolvedBorrowerId, currency);
+        if (lenderWallet == null || lenderWallet.accountId() == null
+                || borrowerWallet == null || borrowerWallet.accountId() == null) {
+            throw new ResourceConflictException("Wallet account unavailable for disbursement");
+        }
+        TransferRequest transferRequest = new TransferRequest(
+                lenderWallet.accountId(),
+                borrowerWallet.accountId(),
+                funding.getAmount(),
+                currency,
+                WalletTransactionType.LOAN_DISBURSE.name(),
+                String.valueOf(loan.getId()),
+                buildDisbursementIdempotencyKey(funding),
+                "loan=" + loan.getId() + ",funding=" + funding.getId()
+        );
+        WalletTransactionResponse transferTx = walletClient.transfer(transferRequest);
+        funding.setStatus(LoanFundingStatus.CAPTURED);
+        funding.setCapturedAt(Instant.now());
+        if (transferTx != null && transferTx.txRef() != null) {
+            funding.setWalletTxRef(transferTx.txRef());
+        }
+        fundingRepository.save(funding);
         return toResponse(funding);
     }
 
@@ -137,6 +197,10 @@ public class FundingService {
     public FundingResponse cancelFunding(Long fundingId, FundingActionRequest request) {
         LoanFunding funding = fundingRepository.findById(fundingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Funding not found"));
+        Loan loan = funding.getLoan();
+        if (loan != null && (loan.getStatus() == LoanStatus.FUNDED || loan.getStatus() == LoanStatus.ACTIVE)) {
+            throw new ResourceConflictException("Funding cannot be canceled after loan is fully funded");
+        }
         if (funding.getStatus() == LoanFundingStatus.CAPTURED) {
             throw new ResourceConflictException("Captured funding cannot be canceled");
         }
@@ -169,28 +233,63 @@ public class FundingService {
                 .toList();
     }
 
-    private void maybeMarkLoanFunded(Loan loan) {
+    @Transactional(readOnly = true)
+    public BigDecimal getCommittedAmount(Long loanId) {
+        return calculateCommittedAmount(loanId);
+    }
+
+    private void refreshLoanFundingStatus(Loan loan, BigDecimal committedAmount) {
         if (loan == null) {
             return;
         }
-        BigDecimal totalCaptured = fundingRepository.findByLoan_Id(loan.getId())
-                .stream()
-                .filter(f -> f.getStatus() == LoanFundingStatus.CAPTURED)
-                .map(LoanFunding::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (totalCaptured.compareTo(loan.getAmount()) >= 0 && loan.getStatus() != LoanStatus.FUNDED) {
-            loan.setStatus(LoanStatus.FUNDED);
-            loan.setActivatedAt(Instant.now());
-            loanRepository.save(loan);
-            loanEventService.record(loan, LoanEventType.FUNDED, null,
-                    "Loan fully funded with total " + totalCaptured);
-        } else if (totalCaptured.compareTo(BigDecimal.ZERO) > 0
-                && loan.getStatus() != LoanStatus.FUNDED
-                && loan.getStatus() != LoanStatus.ACTIVE
-                && loan.getStatus() != LoanStatus.FUNDING) {
+        if (loan.getStatus() == LoanStatus.ACTIVE
+                || loan.getStatus() == LoanStatus.CLOSED
+                || loan.getStatus() == LoanStatus.DEFAULTED
+                || loan.getStatus() == LoanStatus.REJECTED) {
+            return;
+        }
+        BigDecimal committed = committedAmount == null ? BigDecimal.ZERO : committedAmount;
+        if (committed.compareTo(loan.getAmount()) >= 0) {
+            if (loan.getStatus() != LoanStatus.FUNDED) {
+                loan.setStatus(LoanStatus.FUNDED);
+                loanRepository.save(loan);
+                loanEventService.record(loan, LoanEventType.FUNDED, null,
+                        "Loan fully funded with total " + committed);
+            }
+        } else if (loan.getStatus() == LoanStatus.REQUESTED || loan.getStatus() == LoanStatus.APPROVED) {
             loan.setStatus(LoanStatus.FUNDING);
+            if (loan.getApprovedAt() == null) {
+                loan.setApprovedAt(Instant.now());
+            }
             loanRepository.save(loan);
         }
+    }
+
+    private boolean isFundingOpen(LoanStatus status) {
+        if (status == null) {
+            return false;
+        }
+        if (status == LoanStatus.REJECTED || status == LoanStatus.DEFAULTED || status == LoanStatus.CLOSED) {
+            return false;
+        }
+        return status == LoanStatus.REQUESTED || status == LoanStatus.APPROVED || status == LoanStatus.FUNDING;
+    }
+
+    private boolean isCaptureAllowed(LoanStatus status) {
+        return status == LoanStatus.FUNDED || status == LoanStatus.ACTIVE;
+    }
+
+    private BigDecimal calculateCommittedAmount(Long loanId) {
+        if (loanId == null) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return fundingRepository.findByLoan_Id(loanId)
+                .stream()
+                .filter(f -> f.getStatus() != LoanFundingStatus.CANCELED
+                        && f.getStatus() != LoanFundingStatus.REFUNDED)
+                .map(LoanFunding::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal normalizeAmount(BigDecimal amount) {
@@ -236,6 +335,17 @@ public class FundingService {
         }
     }
 
+    private void safeReleaseHold(Long holdId, String reason) {
+        if (holdId == null) {
+            return;
+        }
+        try {
+            walletClient.releaseHold(holdId, new ReleaseHoldRequest(reason));
+        } catch (Exception ex) {
+            log.warn("Failed to release wallet hold {}", holdId, ex);
+        }
+    }
+
     private String normalizeIdempotencyKey(String key) {
         String value = (key == null || key.isBlank()) ? UUID.randomUUID().toString() : key.trim();
         if (value.length() > 80) {
@@ -250,6 +360,14 @@ public class FundingService {
             base = UUID.randomUUID().toString();
         }
         return normalizeIdempotencyKey(base + ":capture");
+    }
+
+    private String buildDisbursementIdempotencyKey(LoanFunding funding) {
+        String base = funding != null ? funding.getIdempotencyKey() : null;
+        if (base == null || base.isBlank()) {
+            base = UUID.randomUUID().toString();
+        }
+        return normalizeIdempotencyKey(base + ":disburse");
     }
 
     private Long resolveLenderId(Long lenderId) {

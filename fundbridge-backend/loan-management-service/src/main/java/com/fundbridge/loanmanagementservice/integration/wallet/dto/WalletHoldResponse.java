@@ -1,9 +1,12 @@
 package com.fundbridge.loanmanagementservice.integration.wallet.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 
 public record WalletHoldResponse(
+        @JsonProperty("id")
         Long holdId,
         String holdRef,
         Long accountId,

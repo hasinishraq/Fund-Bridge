@@ -27,6 +27,9 @@ public record LoanDetailResponse(
         BigDecimal nextDueAmount,
         List<FundingResponse> fundings,
         List<InstallmentResponse> installments,
-        List<LoanEventResponse> events
+        List<LoanEventResponse> events,
+        Integer creditScore,
+        String creditGrade,
+        Instant creditScoreUpdatedAt
 ) {
 }
