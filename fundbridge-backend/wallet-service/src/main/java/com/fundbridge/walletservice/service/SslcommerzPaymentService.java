@@ -2,6 +2,7 @@ package com.fundbridge.walletservice.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fundbridge.walletservice.config.SslcommerzProperties;
 import com.fundbridge.walletservice.dto.SslcommerzPaymentIntentResponse;
@@ -236,12 +237,11 @@ public class SslcommerzPaymentService {
                 "&store_passwd=" + sslProps.getStorePassword() +
                 "&format=json";
         try {
-            ResponseEntity<SslValidationResponse[]> response = restTemplate.getForEntity(url, SslValidationResponse[].class);
-            SslValidationResponse[] body = response.getBody();
-            if (body == null || body.length == 0) {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            SslValidationResponse validation = parseValidationResponse(response.getBody());
+            if (validation == null) {
                 throw new BadRequestException("No validation response received from SSLCommerz");
             }
-            SslValidationResponse validation = body[0];
             if (!StringUtils.hasText(validation.status())) {
                 throw new BadRequestException("SSLCommerz validation returned no status");
             }
@@ -250,6 +250,47 @@ public class SslcommerzPaymentService {
             log.error("Failed to validate SSLCommerz transaction {}", tranId, ex);
             throw new BadRequestException("Unable to validate SSLCommerz payment right now");
         }
+    }
+
+    // SSLCommerz responses can be arrays or object wrappers; handle both shapes.
+    private SslValidationResponse parseValidationResponse(String body) {
+        if (!StringUtils.hasText(body)) {
+            return null;
+        }
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            return extractValidationResponse(root);
+        } catch (JsonProcessingException e) {
+            log.warn("Unable to parse SSLCommerz validation response", e);
+            return null;
+        }
+    }
+
+    private SslValidationResponse extractValidationResponse(JsonNode node) throws JsonProcessingException {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isArray()) {
+            return node.isEmpty() ? null : extractValidationResponse(node.get(0));
+        }
+        if (node.isObject()) {
+            JsonNode element = node.get("element");
+            if (element != null) {
+                SslValidationResponse fromElement = extractValidationResponse(element);
+                if (fromElement != null) {
+                    return fromElement;
+                }
+            }
+            JsonNode data = node.get("data");
+            if (data != null) {
+                SslValidationResponse fromData = extractValidationResponse(data);
+                if (fromData != null) {
+                    return fromData;
+                }
+            }
+            return objectMapper.treeToValue(node, SslValidationResponse.class);
+        }
+        return null;
     }
 
     private SslValidationResponse validateWithValId(String valId) {
