@@ -1,5 +1,6 @@
 package com.fundbridge.walletservice.controller;
 
+import com.fundbridge.walletservice.dto.StripeConfirmRequest;
 import com.fundbridge.walletservice.dto.StripePaymentIntentResponse;
 import com.fundbridge.walletservice.dto.StripeTopUpRequest;
 import com.fundbridge.walletservice.service.StripePaymentService;
@@ -33,5 +34,10 @@ public class PaymentController {
                                                 @RequestBody String payload) {
         stripePaymentService.handleWebhook(payload, signature);
         return ResponseEntity.ok("received");
+    }
+
+    @PostMapping("/confirm")
+    public ResponseEntity<StripePaymentIntentResponse> confirmPayment(@Valid @RequestBody StripeConfirmRequest request) {
+        return ResponseEntity.ok(stripePaymentService.confirmTopUp(request));
     }
 }

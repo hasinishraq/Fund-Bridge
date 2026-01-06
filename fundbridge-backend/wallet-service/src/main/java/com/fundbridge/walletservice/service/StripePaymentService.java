@@ -3,6 +3,7 @@ package com.fundbridge.walletservice.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fundbridge.walletservice.config.StripeProperties;
+import com.fundbridge.walletservice.dto.StripeConfirmRequest;
 import com.fundbridge.walletservice.dto.StripePaymentIntentResponse;
 import com.fundbridge.walletservice.dto.StripeTopUpRequest;
 import com.fundbridge.walletservice.entity.PaymentIntentStatus;
@@ -147,6 +148,62 @@ public class StripePaymentService {
                 record.getStatus(),
                 account.getId(),
                 null
+        );
+    }
+
+    @Transactional
+    public StripePaymentIntentResponse confirmTopUp(StripeConfirmRequest request) {
+        ensureStripeConfigured();
+        String paymentIntentId = requirePaymentIntentId(request.paymentIntentId());
+        Long userId = requireUserId(request.userId());
+        PaymentIntent paymentIntent = retrievePaymentIntent(paymentIntentId);
+
+        Optional<WalletPaymentIntent> existingOpt = paymentIntentRepository.findByPaymentIntentIdForUpdate(paymentIntentId);
+        if (existingOpt.isPresent()) {
+            WalletPaymentIntent existing = existingOpt.get();
+            if (existing.getUserId() != null && !existing.getUserId().equals(userId)) {
+                throw new ResourceConflictException("Payment intent does not belong to the requesting user");
+            }
+        }
+        Long metadataUserId = extractUserId(paymentIntent, existingOpt.map(WalletPaymentIntent::getUserId).orElse(null));
+        if (metadataUserId == null) {
+            throw new BadRequestException("Stripe payment intent is missing user metadata");
+        }
+        if (!metadataUserId.equals(userId)) {
+            throw new ResourceConflictException("Payment intent does not belong to the requesting user");
+        }
+
+        handlePaymentIntentUpdate(paymentIntent);
+
+        WalletPaymentIntent updated = paymentIntentRepository.findByPaymentIntentId(paymentIntentId).orElse(null);
+        if (updated == null) {
+            PaymentIntentStatus status = mapStatus(paymentIntent.getStatus());
+            String currency = paymentIntent.getCurrency() != null ? paymentIntent.getCurrency().toUpperCase() : "BDT";
+            BigDecimal amount = toMajorUnits(
+                    paymentIntent.getAmountReceived() != null ? paymentIntent.getAmountReceived() : paymentIntent.getAmount(),
+                    currency
+            );
+            return new StripePaymentIntentResponse(
+                    paymentIntentId,
+                    paymentIntent.getClientSecret(),
+                    stripeProperties.getPublishableKey(),
+                    amount,
+                    currency,
+                    status,
+                    null,
+                    null
+            );
+        }
+
+        return new StripePaymentIntentResponse(
+                updated.getPaymentIntentId(),
+                paymentIntent.getClientSecret(),
+                stripeProperties.getPublishableKey(),
+                updated.getAmount(),
+                updated.getCurrency(),
+                updated.getStatus(),
+                updated.getAccount() != null ? updated.getAccount().getId() : null,
+                updated.getTransaction() != null ? updated.getTransaction().getId() : null
         );
     }
 
@@ -316,6 +373,13 @@ public class StripePaymentService {
 
     private String buildStripeIdempotencyKey(Long userId, String normalizedKey) {
         return userId + ":" + normalizedKey;
+    }
+
+    private String requirePaymentIntentId(String paymentIntentId) {
+        if (!StringUtils.hasText(paymentIntentId)) {
+            throw new BadRequestException("paymentIntentId is required");
+        }
+        return paymentIntentId.trim();
     }
 
     private Long requireUserId(Long userId) {
