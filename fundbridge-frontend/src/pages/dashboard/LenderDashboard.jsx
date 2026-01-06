@@ -751,7 +751,7 @@ const LenderDashboard = () => {
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn bg-[#1f2a5b] text-white transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
                   disabled={offerStatus === API_STATUS.loading}
                 >
                   {offerStatus === API_STATUS.loading ? 'Submitting...' : 'Submit offer'}

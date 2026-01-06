@@ -42,7 +42,7 @@ const BorrowerProfile = () => {
     return (
       <Link
         to={user.kycReviewUrl}
-        className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+        className="inline-flex items-center justify-center rounded-xl bg-[#1f2a5b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
       >
         Continue verification
       </Link>
@@ -89,7 +89,7 @@ const BorrowerProfile = () => {
               type="button"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-[#1f2a5b] shadow-sm transition hover:-translate-y-[1px] hover:border-[#1f2a5b] hover:text-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {refreshing ? 'Refreshing...' : 'Refresh profile'}
             </button>
