@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { createFunding } from '../../api/fundingApi'
 import { fetchLoans } from '../../api/loanApi'
@@ -13,9 +13,23 @@ import Loader from '../../components/common/Loader'
 import Modal from '../../components/common/Modal'
 import { useAuth } from '../../context/AuthContext'
 
-const heroTrend = [65, 120, 80, 150, 110, 170]
-
 const humanizeStatus = (status) => (status ? status.replace(/_/g, ' ') : 'PENDING')
+
+const statusToneMap = {
+  APPROVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  REQUESTED: 'bg-amber-50 text-amber-700 border border-amber-200',
+  FUNDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  REJECTED: 'bg-rose-50 text-rose-700 border border-rose-200',
+  RESUBMIT_REQUIRED: 'bg-amber-50 text-amber-700 border border-amber-200',
+  DISBURSED: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  FUNDED: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  ACTIVE: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  CLOSED: 'bg-slate-50 text-slate-700 border border-slate-200',
+  default: 'bg-slate-50 text-slate-700 border border-slate-200',
+}
+
+const getStatusTone = (status) => statusToneMap[status] || statusToneMap.default
 
 const buildIdempotencyKey = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `fund-${Date.now()}`
@@ -28,6 +42,11 @@ const getNextDueAmount = (loan) => Number(loan?.nextDueAmount ?? 0)
 const isOfferable = (loan) =>
   ['PENDING', 'REQUESTED', 'FUNDING', 'APPROVED'].includes(loan?.status) &&
   getOutstandingFunding(loan) > 0
+
+const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    : 'No date'
 
 const LenderDashboard = () => {
   const { user, bootstrapping } = useAuth()
@@ -186,8 +205,12 @@ const LenderDashboard = () => {
   const highlightedOpportunities = fundingQueue.slice(0, 4)
   const recentMaturities = completedDeals.slice(0, 5)
   const heroName = user?.name?.split(' ')[0] || 'Investor'
-  const nextOpportunity = highlightedOpportunities[0]
   const offerRemaining = offerLoan ? getOutstandingFunding(offerLoan) : 0
+  const today = new Date()
+  const startDate = new Date()
+  startDate.setDate(today.getDate() - 7)
+  const dateFormatter = new Intl.DateTimeFormat('en-GB')
+  const dateRangeLabel = `${dateFormatter.format(startDate)} to ${dateFormatter.format(today)}`
 
   const handleOpenOffer = (loan) => {
     setOfferLoan(loan)
@@ -278,174 +301,239 @@ const LenderDashboard = () => {
   }
 
   return (
-    <div className="dashboard lender-dashboard flowdash">
-      <section className="dashboard-hero lender-hero flow-stagger">
-        <div className="hero-copy">
-          <p className="eyebrow">Welcome back, {heroName}</p>
-          <h1>Deploy capital with precision</h1>
-          <p>
-            Evaluate pipeline health, balance wallet liquidity, and stay ahead of repayments
-            without jumping between tools.
+    <div className="flowdash space-y-6 text-slate-900">
+      <section className="flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
+            Home / Lender dashboard
           </p>
-          <div className="hero-actions">
-            <Link to="/wallet" className="btn btn-primary hero-btn">
-              Manage wallet
-            </Link>
-            <Link to="/loans/marketplace" className="btn btn-secondary hero-btn">
-              Open marketplace
-            </Link>
-          </div>
-          <div className="hero-highlights">
-            <div className="hero-highlight">
-              <span>Capital ready</span>
-              <strong>{CURRENCY_FORMATTER.format(walletBalance)}</strong>
-              <small className="muted">Liquid to deploy</small>
-            </div>
-            <div className="hero-highlight">
-              <span>Coverage</span>
-              <strong>{coverageRatio}%</strong>
-              <small className="muted">vs active exposure</small>
-            </div>
-            <div className="hero-highlight">
-              <span>Pipeline</span>
-              <strong>{fundingQueue.length} deals</strong>
-              <small className="muted">{CURRENCY_FORMATTER.format(fundingQueueAmount)} in queue</small>
-            </div>
-          </div>
+          <h1 className="font-display text-2xl font-semibold text-slate-900">
+            Lender dashboard
+          </h1>
+          <p className="text-sm text-slate-500">
+            Welcome back, {heroName}. Track pipeline health, wallet liquidity, and repayment flow.
+          </p>
         </div>
-        <div className="hero-balance">
-          <div className="hero-balance-card">
-            <span>Capital ready</span>
-            <strong>{CURRENCY_FORMATTER.format(walletBalance)}</strong>
-            <div className="hero-meta">
-              <p>{activeDeals.length} active deals</p>
-              <p>{fundingQueue.length} awaiting commitments</p>
-            </div>
-            <div className="hero-trend" aria-hidden>
-              {heroTrend.map((height, index) => (
-                <span key={`trend-${index}`} style={{ height: `${height}px` }} />
-              ))}
-            </div>
-          </div>
-          <div className="hero-focus">
-            <p className="eyebrow">Next opportunity</p>
-            {nextOpportunity ? (
-              <>
-                <h3>{nextOpportunity.purpose || 'Funding request'}</h3>
-                <div className="hero-focus-stats">
-                  <div>
-                    <small>Amount</small>
-                    <strong>{CURRENCY_FORMATTER.format(nextOpportunity.amount || 0)}</strong>
-                  </div>
-                  <div>
-                    <small>Tenure</small>
-                    <strong>{nextOpportunity.tenureMonths || '--'}m</strong>
-                  </div>
-                  <div>
-                    <small>Status</small>
-                    <span className={`status-chip status-${nextOpportunity.status}`}>
-                      {humanizeStatus(nextOpportunity.status)}
-                    </span>
-                  </div>
-                </div>
-                <p className="muted">
-                  {nextOpportunity.createdAt
-                    ? new Date(nextOpportunity.createdAt).toLocaleDateString()
-                    : 'Awaiting schedule'}
-                </p>
-              </>
-            ) : (
-              <>
-                <h3>Fully deployed</h3>
-                <p className="muted">
-                  Every tracked request has already received commitments. Invite borrowers to
-                  publish new deals to keep capital working.
-                </p>
-              </>
-            )}
-          </div>
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          {dateRangeLabel}
         </div>
       </section>
 
-      <div className="dashboard-metrics flow-stagger">
-        <article className="metric-card">
-          <p>Active exposure</p>
-          <h3>{CURRENCY_FORMATTER.format(activeExposure)}</h3>
-          <span>{activeDeals.length} deals in play</span>
-          <div className="progress" aria-label="Utilization">
-            <span style={{ width: `${Math.min(100, coverageRatio)}%` }} />
-          </div>
-        </article>
-        <article className="metric-card">
-          <p>Pending queue</p>
-          <h3>{CURRENCY_FORMATTER.format(fundingQueueAmount)}</h3>
-          <span>{queueShare}% of total pipeline</span>
-          <div className="stat-chip">{fundingQueue.length} requests live</div>
-        </article>
-        <article className="metric-card">
-          <p>Average ticket size</p>
-          <h3>{avgTicket ? CURRENCY_FORMATTER.format(avgTicket) : '--'}</h3>
-          <span>{avgTenure || '--'} month average tenure</span>
-          <div className="stat-chip">{completedDeals.length} matured deals</div>
-        </article>
-        <article className="metric-card">
-          <p>Monthly cash yield</p>
-          <h3>{CURRENCY_FORMATTER.format(monthlyCashflow)}</h3>
-          <span>Projected repayments</span>
-          <div className="progress progress-alt" aria-label="Completion rate">
-            <span style={{ width: `${completionRate}%` }} />
-          </div>
-        </article>
-      </div>
-
-      <div className="dashboard-columns flow-stagger">
-        <section className="panel">
-          <div className="panel-header">
+      <section className="flow-stagger grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="eyebrow">Marketplace</p>
-              <h3>Funding queue preview</h3>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Capital ready
+              </p>
+              <p className="mt-2 font-display text-2xl font-semibold text-slate-900">
+                {CURRENCY_FORMATTER.format(walletBalance)}
+              </p>
             </div>
-            <Link to="/loans/marketplace" className="ghost-link">
+            <Link to="/wallet" className="text-xs font-semibold text-slate-400 hover:text-slate-700">
+              Wallet
+            </Link>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+            <span>Coverage ratio</span>
+            <span className="font-semibold text-emerald-600">{coverageRatio}%</span>
+          </div>
+          <div className="mt-4 h-2 w-full rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-emerald-500"
+              style={{ width: `${Math.min(100, coverageRatio)}%` }}
+            />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
+            <div>
+              <p>Active deals</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">{activeDeals.length}</p>
+            </div>
+            <div>
+              <p>Queue size</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">{fundingQueue.length}</p>
+            </div>
+          </div>
+        </article>
+
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Active exposure
+              </p>
+              <p className="mt-2 font-display text-2xl font-semibold text-slate-900">
+                {CURRENCY_FORMATTER.format(activeExposure)}
+              </p>
+            </div>
+            <Link
+              to="/loans/offers"
+              className="text-xs font-semibold text-slate-400 hover:text-slate-700"
+            >
+              Portfolio
+            </Link>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+            <span>Avg ticket size</span>
+            <span className="font-semibold text-blue-600">
+              {avgTicket ? CURRENCY_FORMATTER.format(avgTicket) : '--'}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
+            <div>
+              <p>Avg tenure</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {avgTenure || '--'} mo
+              </p>
+            </div>
+            <div>
+              <p>Deals in play</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">{activeDeals.length}</p>
+            </div>
+          </div>
+        </article>
+
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Funding queue
+              </p>
+              <p className="mt-2 font-display text-2xl font-semibold text-slate-900">
+                {CURRENCY_FORMATTER.format(fundingQueueAmount)}
+              </p>
+            </div>
+            <Link
+              to="/loans/marketplace"
+              className="text-xs font-semibold text-slate-400 hover:text-slate-700"
+            >
+              Marketplace
+            </Link>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+            <span>Queue share</span>
+            <span className="font-semibold text-amber-600">{queueShare}%</span>
+          </div>
+          <div className="mt-4 h-2 w-full rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-amber-400"
+              style={{ width: `${Math.min(100, queueShare)}%` }}
+            />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
+            <div>
+              <p>Requests live</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">{fundingQueue.length}</p>
+            </div>
+            <div>
+              <p>Deals closed</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {completedDeals.length}
+              </p>
+            </div>
+          </div>
+        </article>
+
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Monthly cash yield
+              </p>
+              <p className="mt-2 font-display text-2xl font-semibold text-slate-900">
+                {CURRENCY_FORMATTER.format(monthlyCashflow)}
+              </p>
+            </div>
+            <Link
+              to="/wallet/transactions"
+              className="text-xs font-semibold text-slate-400 hover:text-slate-700"
+            >
+              History
+            </Link>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+            <span>Completion rate</span>
+            <span className="font-semibold text-emerald-600">{completionRate}%</span>
+          </div>
+          <div className="mt-4 h-2 w-full rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-emerald-400"
+              style={{ width: `${Math.min(100, completionRate)}%` }}
+            />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
+            <div>
+              <p>Next EMI</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {nextUpcomingInstallment?.date
+                  ? nextUpcomingInstallment.date.toLocaleDateString()
+                  : '--'}
+              </p>
+            </div>
+            <div>
+              <p>Installments paid</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {paidInstallments}/{totalInstallments || '--'}
+              </p>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="flow-stagger grid gap-4 xl:grid-cols-[2fr,1fr]">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Marketplace
+              </p>
+              <h2 className="font-display text-lg font-semibold text-slate-900">
+                Funding queue preview
+              </h2>
+            </div>
+            <Link
+              to="/loans/marketplace"
+              className="text-xs font-semibold text-slate-400 hover:text-slate-700"
+            >
               View marketplace
             </Link>
           </div>
-          <div className="loan-stream">
-            {fundingQueue.length ? (
-              fundingQueue.map((loan) => (
-                <article key={loan.id || loan.createdAt} className="loan-row">
-                  <div className="loan-row-main">
-                    <h4>{loan.purpose || 'Funding request'}</h4>
-                    <p className="muted">
-                      {loan.createdAt
-                        ? new Date(loan.createdAt).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                          })
-                        : 'No date'}
+          <div className="mt-4 space-y-3">
+            {highlightedOpportunities.length ? (
+              highlightedOpportunities.map((loan) => (
+                <div
+                  key={loan.id || loan.createdAt}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3"
+                >
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>{formatDate(loan.createdAt)}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${getStatusTone(
+                        loan.status,
+                      )}`}
+                    >
+                      {humanizeStatus(loan.status)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {loan.purpose || 'Funding request'}
+                    </p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {CURRENCY_FORMATTER.format(loan.amount || 0)}
                     </p>
                   </div>
-                  <div className="loan-row-details">
-                    <div>
-                      <small>Amount</small>
-                      <strong>{CURRENCY_FORMATTER.format(loan.amount || 0)}</strong>
-                    </div>
-                    <div>
-                      <small>Tenure</small>
-                      <strong>{loan.tenureMonths || '--'}m</strong>
-                    </div>
-                    <div>
-                      <span className={`status-chip status-${loan.status}`}>
-                        {humanizeStatus(loan.status)}
+                  <div className="mt-2 text-xs text-slate-500">
+                    <div className="flex items-center justify-between">
+                      <span>Committed {CURRENCY_FORMATTER.format(getPledgedAmount(loan))}</span>
+                      <span>
+                        Remaining {CURRENCY_FORMATTER.format(getOutstandingFunding(loan))}
                       </span>
                     </div>
-                  </div>
-                  <div className="loan-progress">
-                    <small>
-                      Committed {CURRENCY_FORMATTER.format(getPledgedAmount(loan))} of{' '}
-                      {CURRENCY_FORMATTER.format(loan.amount || 0)}
-                    </small>
-                    <div className="progress" aria-label="Funding progress">
-                      <span
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-slate-200">
+                      <div
+                        className="h-full rounded-full bg-emerald-400"
                         style={{
                           width: `${Math.min(
                             100,
@@ -458,133 +546,164 @@ const LenderDashboard = () => {
                       />
                     </div>
                   </div>
-                  <div className="loan-row-actions">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     {isOfferable(loan) ? (
                       <button
                         type="button"
-                        className="btn btn-secondary"
+                        className="inline-flex items-center justify-center rounded-lg bg-[#1f2a5b] px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
                         onClick={() => handleOpenOffer(loan)}
                       >
                         Submit offer
                       </button>
                     ) : (
-                      <button type="button" className="btn btn-secondary" disabled>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500"
+                        disabled
+                      >
                         Offer closed
                       </button>
                     )}
+                    <Link
+                      to={loan.id ? `/loans/${loan.id}` : '/loans/marketplace'}
+                      className="text-xs font-semibold text-slate-400 hover:text-slate-700"
+                    >
+                      View details
+                    </Link>
                   </div>
-                </article>
+                </div>
               ))
             ) : (
-              <p>No funding requests are pending. Visit the marketplace for all loans.</p>
+              <p className="text-sm text-slate-500">
+                No funding requests are pending. Visit the marketplace for all loans.
+              </p>
             )}
           </div>
-        </section>
-        <section className="panel">
-          <div className="panel-header">
+        </article>
+
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="eyebrow">Portfolio</p>
-              <h3>Liquidity radar</h3>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Portfolio
+              </p>
+              <h2 className="font-display text-lg font-semibold text-slate-900">
+                Liquidity radar
+              </h2>
             </div>
-            <span className="ghost-link">Coverage {coverageRatio}%</span>
+            <span className="text-xs font-semibold text-slate-400">Coverage {coverageRatio}%</span>
           </div>
-          <ul className="wallet-pulse">
-            <li>
+          <ul className="mt-4 space-y-3">
+            <li className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               <span>Available to deploy</span>
-              <strong>{CURRENCY_FORMATTER.format(walletBalance)}</strong>
+              <strong className="text-slate-900">{CURRENCY_FORMATTER.format(walletBalance)}</strong>
             </li>
-            <li>
+            <li className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               <span>Projected 30d repayments</span>
-              <strong>{CURRENCY_FORMATTER.format(monthlyCashflow)}</strong>
+              <strong className="text-slate-900">
+                {CURRENCY_FORMATTER.format(monthlyCashflow)}
+              </strong>
             </li>
-            <li>
+            <li className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               <span>Next EMI due</span>
-              <strong>{nextDueLabel}</strong>
+              <strong className="text-slate-900">{nextDueLabel}</strong>
             </li>
-            <li>
+            <li className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               <span>Completion rate</span>
-              <strong>{completionRate}%</strong>
+              <strong className="text-slate-900">{completionRate}%</strong>
             </li>
           </ul>
-        </section>
-      </div>
+        </article>
+      </section>
 
-      <div className="dashboard-columns secondary flow-stagger">
-        <section className="panel">
-          <div className="panel-header">
+      <section className="flow-stagger grid gap-4 xl:grid-cols-[2fr,1fr]">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="eyebrow">Relationships</p>
-              <h3>Borrower leaderboard</h3>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Relationships
+              </p>
+              <h3 className="font-display text-lg font-semibold text-slate-900">
+                Borrower leaderboard
+              </h3>
             </div>
           </div>
-          {borrowerLeaderboard.length ? (
-            <table className="leaderboard-table">
-              <thead>
-                <tr>
-                  <th>Borrower</th>
-                  <th>Deals</th>
-                  <th>Volume</th>
-                </tr>
-              </thead>
-              <tbody>
-                {borrowerLeaderboard.map((entry) => (
-                  <tr key={entry.borrower}>
-                    <td>{entry.borrower}</td>
-                    <td>{entry.deals}</td>
-                    <td>{CURRENCY_FORMATTER.format(entry.volume)}</td>
+          <div className="mt-4 overflow-x-auto">
+            {borrowerLeaderboard.length ? (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <th className="pb-2">Borrower</th>
+                    <th className="pb-2">Deals</th>
+                    <th className="pb-2">Volume</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p>Fund a borrower to start tracking relationship health.</p>
-          )}
-        </section>
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Recently closed</p>
-              <h3>Matured deals</h3>
-            </div>
-          </div>
-          <div className="loan-stream">
-            {recentMaturities.length ? (
-              recentMaturities.map((loan) => (
-                <article key={`matured-${loan.id || loan.closedAt}`} className="loan-row">
-                  <div className="loan-row-main">
-                    <h4>{loan.purpose || 'Loan'}</h4>
-                    <p className="muted">
-                      {loan.closedAt
-                        ? new Date(loan.closedAt).toLocaleDateString()
-                        : 'No timeline'}
-                    </p>
-                  </div>
-                  <div className="loan-row-details">
-                    <div>
-                      <small>Amount</small>
-                      <strong>{CURRENCY_FORMATTER.format(loan.amount || 0)}</strong>
-                    </div>
-                    <div>
-                      <small>Status</small>
-                      <span className={`status-chip status-${loan.status}`}>
-                        {humanizeStatus(loan.status)}
-                      </span>
-                    </div>
-                  </div>
-                </article>
-              ))
+                </thead>
+                <tbody>
+                  {borrowerLeaderboard.map((entry) => (
+                    <tr key={entry.borrower} className="border-t border-slate-100">
+                      <td className="py-2 text-slate-900">{entry.borrower}</td>
+                      <td className="py-2 text-slate-700">{entry.deals}</td>
+                      <td className="py-2 text-slate-700">
+                        {CURRENCY_FORMATTER.format(entry.volume)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             ) : (
-              <p>No deals have matured yet.</p>
+              <p className="text-sm text-slate-500">
+                Fund a borrower to start tracking relationship health.
+              </p>
             )}
           </div>
-        </section>
-      </div>
+        </article>
 
-      <Modal
-        open={Boolean(offerLoan)}
-        title="Submit offer"
-        onClose={handleCloseOffer}
-      >
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Recently closed
+              </p>
+              <h3 className="font-display text-lg font-semibold text-slate-900">Matured deals</h3>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3">
+            {recentMaturities.length ? (
+              recentMaturities.map((loan) => (
+                <div
+                  key={`matured-${loan.id || loan.closedAt}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {loan.purpose || 'Loan'}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {loan.closedAt ? new Date(loan.closedAt).toLocaleDateString() : 'No timeline'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {CURRENCY_FORMATTER.format(loan.amount || 0)}
+                    </p>
+                    <span
+                      className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${getStatusTone(
+                        loan.status,
+                      )}`}
+                    >
+                      {humanizeStatus(loan.status)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">No deals have matured yet.</p>
+            )}
+          </div>
+        </article>
+      </section>
+
+      <Modal open={Boolean(offerLoan)} title="Submit offer" onClose={handleCloseOffer}>
         {offerLoan && (
           <>
             <div className="details-grid">
