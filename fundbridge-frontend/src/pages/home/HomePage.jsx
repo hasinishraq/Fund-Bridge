@@ -2,8 +2,7 @@ import { Link } from 'react-router-dom'
 import homeContent from './homeContent'
 
 const HomePage = () => {
-  const { hero, features = [], steps = [], stats = [], testimonials = [], partners = [], cta } =
-    homeContent
+  const { hero, features = [], steps = [], stats = [], testimonials = [], cta } = homeContent
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-900">
@@ -102,24 +101,6 @@ const HomePage = () => {
                 Wallet balance
               </p>
               <p className="text-xl font-semibold text-slate-900">{hero?.walletBalance}</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Trusted by teams
-            </p>
-            <div className="flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
-              {partners.map((partner) => (
-                <span
-                  key={partner}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1"
-                >
-                  {partner}
-                </span>
-              ))}
             </div>
           </div>
         </section>
