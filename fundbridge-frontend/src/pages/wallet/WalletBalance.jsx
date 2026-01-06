@@ -63,7 +63,7 @@ const StripePaymentForm = ({ intent, onSuccess, onError }) => {
       <button
         type="submit"
         disabled={submitting || !stripe || !elements}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1f2a5b] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? 'Confirming...' : `Pay ${CURRENCY_FORMATTER.format(intent?.amount ?? 0)}`}
       </button>
@@ -333,7 +333,7 @@ const WalletBalance = () => {
         <button
           type="button"
           onClick={() => loadWallet()}
-          className="mt-4 inline-flex items-center justify-center rounded-xl bg-rose-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200"
+          className="mt-4 inline-flex items-center justify-center rounded-xl bg-[#1f2a5b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
         >
           Try again
         </button>
@@ -364,13 +364,13 @@ const WalletBalance = () => {
             <button
               type="button"
               onClick={() => loadWallet()}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-[#1f2a5b] shadow-sm transition hover:-translate-y-[1px] hover:border-[#1f2a5b] hover:text-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
               Refresh
             </button>
             <Link
               to="/wallet/transactions"
-              className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="inline-flex items-center justify-center rounded-xl bg-[#1f2a5b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
               View transactions
             </Link>
@@ -440,8 +440,8 @@ const WalletBalance = () => {
                       }}
                       className={`flex h-full w-full flex-col items-start rounded-xl border px-4 py-3 text-left transition ${
                         active
-                          ? 'border-indigo-200 bg-indigo-50 text-indigo-900 shadow-sm'
-                          : 'border-slate-200 bg-white text-slate-800 hover:-translate-y-[1px] hover:border-indigo-200'
+                          ? 'border-[#1f2a5b]/20 bg-[#1f2a5b]/10 text-[#1f2a5b] shadow-sm'
+                          : 'border-slate-200 bg-white text-slate-800 hover:-translate-y-[1px] hover:border-[#1f2a5b]'
                       }`}
                     >
                       <span className="text-sm font-semibold">{method.title}</span>
@@ -493,7 +493,7 @@ const WalletBalance = () => {
                     setSslIntent(null)
                     setIdempotencyKey(buildIdempotencyKey())
                   }}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800"
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 transition hover:-translate-y-[1px] hover:border-[#1f2a5b] hover:text-[#23306b]"
                 >
                   +{CURRENCY_FORMATTER.format(value)}
                 </button>
@@ -503,7 +503,7 @@ const WalletBalance = () => {
             <button
               type="submit"
               disabled={formStatus === API_STATUS.loading}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1f2a5b] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {formStatus === API_STATUS.loading
                 ? 'Funding...'
@@ -545,7 +545,7 @@ const WalletBalance = () => {
                     <button
                       type="button"
                       onClick={openSslCheckout}
-                      className="text-indigo-700 underline decoration-indigo-300 decoration-2 underline-offset-4 transition hover:text-indigo-900"
+                      className="text-[#1f2a5b] underline decoration-[#1f2a5b]/40 decoration-2 underline-offset-4 transition hover:text-[#23306b]"
                     >
                       Open SSLCommerz
                     </button>
@@ -560,7 +560,7 @@ const WalletBalance = () => {
                     type="button"
                     onClick={openSslCheckout}
                     disabled={!sslIntent?.redirectUrl}
-                    className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:-translate-y-[1px] hover:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-[#1f2a5b] shadow-sm transition hover:-translate-y-[1px] hover:border-[#1f2a5b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Open SSLCommerz window
                   </button>
@@ -568,7 +568,7 @@ const WalletBalance = () => {
                     type="button"
                     onClick={handleSslConfirm}
                     disabled={sslConfirming}
-                    className="inline-flex items-center justify-center rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center rounded-xl bg-[#1f2a5b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {sslConfirming ? 'Confirming...' : 'I completed payment'}
                   </button>
