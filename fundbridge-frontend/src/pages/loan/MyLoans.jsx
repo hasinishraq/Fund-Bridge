@@ -11,6 +11,8 @@ const statusToneMap = {
   DISBURSED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   ACTIVE: 'bg-sky-50 text-sky-700 border border-sky-200',
   PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  REQUESTED: 'bg-amber-50 text-amber-700 border border-amber-200',
+  FUNDED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   REJECTED: 'bg-rose-50 text-rose-700 border border-rose-200',
   DEFAULTED: 'bg-rose-50 text-rose-700 border border-rose-200',
   CLOSED: 'bg-slate-50 text-slate-700 border border-slate-200',

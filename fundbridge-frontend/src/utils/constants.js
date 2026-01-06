@@ -14,10 +14,10 @@ export const getRoleHomePath = (role) =>
   ROLE_HOME_PATH[role] || ROLE_HOME_PATH[ROLE.BORROWER]
 
 export const LOAN_STATUS = [
-  'PENDING',
+  'REQUESTED',
   'APPROVED',
   'FUNDING',
-  'DISBURSED',
+  'FUNDED',
   'ACTIVE',
   'REJECTED',
   'DEFAULTED',

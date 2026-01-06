@@ -4,6 +4,7 @@ public enum LoanEventType {
     CREATED,
     APPROVED,
     FUNDED,
+    ACTIVATED,
     EMI_PAID,
     DEFAULTED
 }
