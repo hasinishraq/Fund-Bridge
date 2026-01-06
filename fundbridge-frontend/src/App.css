@@ -788,6 +788,47 @@ table td {
   gap: 1rem;
 }
 
+.marketplace-filters {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  padding: 0.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.marketplace-filters input,
+.marketplace-filters select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+  background: #fff;
+}
+
+.filter-range {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
+}
+
+.filter-range label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+}
+
+.filter-input,
+.filter-select {
+  display: flex;
+  align-items: center;
+}
+
 .loan-row {
   display: flex;
   justify-content: space-between;
@@ -810,6 +851,19 @@ table td {
   display: block;
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.loan-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.loan-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .opportunity-grid {
@@ -889,7 +943,7 @@ table td {
    Layout + navigation polish
 ---------------------------- */
 .app-shell {
-  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  background: linear-gradient(180deg, #f7f8fc 0%, #eef2f7 100%);
 }
 
 .shell-body {
@@ -897,8 +951,8 @@ table td {
 }
 
 .shell-content {
-  padding: 2.5rem;
-  background: linear-gradient(180deg, #f8fafc, #e2e8f0);
+  padding: 2rem;
+  background: transparent;
 }
 
 .navbar {
@@ -1281,4 +1335,35 @@ table td {
   .loan-row-details {
     width: 100%;
   }
+}
+
+@keyframes flowdashFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.flowdash .flow-stagger > * {
+  animation: flowdashFadeUp 0.55s ease both;
+}
+
+.flowdash .flow-stagger > *:nth-child(2) {
+  animation-delay: 0.06s;
+}
+
+.flowdash .flow-stagger > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+
+.flowdash .flow-stagger > *:nth-child(4) {
+  animation-delay: 0.18s;
+}
+
+.flowdash .flow-stagger > *:nth-child(5) {
+  animation-delay: 0.24s;
 }
