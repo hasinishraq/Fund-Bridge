@@ -61,6 +61,17 @@ export const createStripeTopUpIntent = async ({
   return data
 }
 
+export const confirmStripePayment = async ({ paymentIntentId, userId } = {}) => {
+  if (!paymentIntentId || !userId) {
+    throw new Error('paymentIntentId and userId are required to confirm Stripe payment')
+  }
+  const { data } = await client.post('/payments/stripe/confirm', {
+    paymentIntentId,
+    userId,
+  })
+  return data
+}
+
 export const createSslcommerzTopUpIntent = async ({
   amount,
   userId,
