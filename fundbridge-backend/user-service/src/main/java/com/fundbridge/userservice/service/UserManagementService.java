@@ -27,11 +27,14 @@ public class UserManagementService {
 
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserNotificationService userNotificationService;
 
     public UserManagementService(UserAccountRepository userAccountRepository,
-                                 PasswordEncoder passwordEncoder) {
+                                 PasswordEncoder passwordEncoder,
+                                 UserNotificationService userNotificationService) {
         this.userAccountRepository = userAccountRepository;
         this.passwordEncoder = passwordEncoder;
+        this.userNotificationService = userNotificationService;
     }
 
     @Transactional
@@ -109,6 +112,7 @@ public class UserManagementService {
     @Transactional
     public UserResponse updateKyc(Long id, KycUpdateRequest request) {
         UserAccount user = findUserOrThrow(id);
+        KycStatus previousStatus = user.getKycStatus();
         if (request.status() != null) {
             user.setKycStatus(request.status());
         }
@@ -119,6 +123,9 @@ public class UserManagementService {
             user.setKycReviewUrl(request.reviewUrl().trim());
         }
         user.setKycLastSyncedAt(Instant.now());
+        if (request.status() != null && request.status() != previousStatus) {
+            userNotificationService.notifyKycStatus(user, request.status());
+        }
         return UserMapper.toResponse(user);
     }
 
