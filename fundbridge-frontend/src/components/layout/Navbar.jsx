@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { fetchInAppNotifications, markInAppNotificationRead } from '../../api/notificationApi'
 import { getRoleHomePath } from '../../utils/constants'
 
 const Navbar = () => {
@@ -8,7 +9,21 @@ const Navbar = () => {
   const brandDestination = getRoleHomePath(user?.role)
   const initials = user?.name?.[0]?.toUpperCase() || 'U'
   const [showNotifications, setShowNotifications] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [notificationsError, setNotificationsError] = useState('')
   const notificationsRef = useRef(null)
+
+  const formatTimestamp = (value) => {
+    if (!value) {
+      return ''
+    }
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) {
+      return ''
+    }
+    return date.toLocaleString()
+  }
 
   useEffect(() => {
     if (!showNotifications) {
@@ -35,6 +50,50 @@ const Navbar = () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [showNotifications])
+
+  useEffect(() => {
+    if (!showNotifications || !user?.id) {
+      return undefined
+    }
+    let isActive = true
+    setNotificationsLoading(true)
+    setNotificationsError('')
+    fetchInAppNotifications({ userId: user.id, unreadOnly: true })
+      .then((data) => {
+        if (!isActive) {
+          return
+        }
+        setNotifications(Array.isArray(data) ? data : [])
+      })
+      .catch((error) => {
+        console.error('Unable to load notifications', error)
+        if (!isActive) {
+          return
+        }
+        setNotificationsError('Unable to load notifications right now.')
+      })
+      .finally(() => {
+        if (isActive) {
+          setNotificationsLoading(false)
+        }
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [showNotifications, user?.id])
+
+  const handleMarkRead = async (notificationId) => {
+    if (!user?.id || !notificationId) {
+      return
+    }
+    try {
+      await markInAppNotificationRead({ userId: user.id, notificationId })
+      setNotifications((prev) => prev.filter((item) => item.id !== notificationId))
+    } catch (error) {
+      console.error('Unable to mark notification as read', error)
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -105,11 +164,61 @@ const Navbar = () => {
                     Close
                   </button>
                 </div>
-                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-                  <p className="text-sm font-semibold text-slate-900">No new notifications</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Updates about funding, repayments, and wallet activity will appear here.
-                  </p>
+                <div className="mt-3 space-y-2">
+                  {!user?.id && (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-sm font-semibold text-slate-900">Sign in to view notifications</p>
+                    </div>
+                  )}
+                  {user?.id && notificationsLoading && (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-sm font-semibold text-slate-900">Loading notifications...</p>
+                    </div>
+                  )}
+                  {user?.id && notificationsError && !notificationsLoading && (
+                    <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-3">
+                      <p className="text-sm font-semibold text-rose-600">{notificationsError}</p>
+                    </div>
+                  )}
+                  {user?.id && !notificationsLoading && !notificationsError && notifications.length === 0 && (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-sm font-semibold text-slate-900">No new notifications</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Updates about funding, repayments, and wallet activity will appear here.
+                      </p>
+                    </div>
+                  )}
+                  {user?.id && !notificationsLoading && !notificationsError && notifications.length > 0 && (
+                    <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                      {notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">
+                                {notification.title || notification.templateKey || 'Notification'}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-600">{notification.body}</p>
+                              {notification.createdAt && (
+                                <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                                  {formatTimestamp(notification.createdAt)}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleMarkRead(notification.id)}
+                              className="text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-600 hover:text-blue-700"
+                            >
+                              Mark read
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

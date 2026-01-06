@@ -37,17 +37,20 @@ public class RepaymentService {
     private final LoanInstallmentRepository installmentRepository;
     private final LoanRepository loanRepository;
     private final LoanEventService loanEventService;
+    private final LoanNotificationService loanNotificationService;
     private final LoanFundingRepository fundingRepository;
     private final WalletClient walletClient;
 
     public RepaymentService(LoanInstallmentRepository installmentRepository,
                             LoanRepository loanRepository,
                             LoanEventService loanEventService,
+                            LoanNotificationService loanNotificationService,
                             LoanFundingRepository fundingRepository,
                             WalletClient walletClient) {
         this.installmentRepository = installmentRepository;
         this.loanRepository = loanRepository;
         this.loanEventService = loanEventService;
+        this.loanNotificationService = loanNotificationService;
         this.fundingRepository = fundingRepository;
         this.walletClient = walletClient;
     }
@@ -109,6 +112,7 @@ public class RepaymentService {
                 ? "Installment #" + installment.getInstallmentNo() + " paid"
                 : "Installment #" + installment.getInstallmentNo() + " paid and distributed to " + shares.size() + " lenders";
         loanEventService.record(loan, LoanEventType.EMI_PAID, loan.getBorrowerUserId(), distributionNote);
+        loanNotificationService.notifyEmiPaid(loan, installment);
         boolean allPaid = installmentRepository.findByLoan_IdOrderByInstallmentNo(loan.getId())
                 .stream()
                 .allMatch(inst -> inst.getStatus() == LoanInstallmentStatus.PAID);

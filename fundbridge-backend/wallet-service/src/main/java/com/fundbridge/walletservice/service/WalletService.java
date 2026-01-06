@@ -56,6 +56,7 @@ public class WalletService {
     private final WalletHoldRepository holdRepository;
     private final WalletProperties walletProperties;
     private final EncryptionService encryptionService;
+    private final WalletNotificationService walletNotificationService;
 
     public WalletService(WalletAccountRepository accountRepository,
                          WalletBalanceRepository balanceRepository,
@@ -63,7 +64,8 @@ public class WalletService {
                          WalletLedgerEntryRepository ledgerEntryRepository,
                          WalletHoldRepository holdRepository,
                          WalletProperties walletProperties,
-                         EncryptionService encryptionService) {
+                         EncryptionService encryptionService,
+                         WalletNotificationService walletNotificationService) {
         this.accountRepository = accountRepository;
         this.balanceRepository = balanceRepository;
         this.transactionRepository = transactionRepository;
@@ -71,6 +73,7 @@ public class WalletService {
         this.holdRepository = holdRepository;
         this.walletProperties = walletProperties;
         this.encryptionService = encryptionService;
+        this.walletNotificationService = walletNotificationService;
     }
 
     @Transactional
@@ -165,7 +168,9 @@ public class WalletService {
         transaction.setPostedAt(Instant.now());
         transactionRepository.save(transaction);
 
-        return new FundingResult(account, savedBalance, transaction, true);
+        FundingResult result = new FundingResult(account, savedBalance, transaction, true);
+        walletNotificationService.notifyTopUpSuccess(result);
+        return result;
     }
 
     @Transactional
@@ -235,6 +240,7 @@ public class WalletService {
         transaction.setPostedAt(Instant.now());
         transactionRepository.save(transaction);
 
+        walletNotificationService.notifyTransfer(transaction, fromAccount.getUserId(), toAccount.getUserId());
         return toTransaction(transaction);
     }
 
@@ -292,6 +298,7 @@ public class WalletService {
         hold.setReferenceType(request.referenceType());
         hold.setReferenceId(request.referenceId());
         holdRepository.save(hold);
+        walletNotificationService.notifyHoldCreated(hold);
         return toHold(hold);
     }
 
@@ -311,6 +318,7 @@ public class WalletService {
         hold.setStatus(HoldStatus.RELEASED);
         hold.setReason(request.reason() != null ? request.reason() : hold.getReason());
         holdRepository.save(hold);
+        walletNotificationService.notifyHoldReleased(hold);
         return toHold(hold);
     }
 
@@ -365,6 +373,7 @@ public class WalletService {
         hold.setStatus(HoldStatus.CAPTURED);
         hold.setCapturedTransaction(transaction);
         holdRepository.save(hold);
+        walletNotificationService.notifyHoldCaptured(hold, transaction);
         return toTransaction(transaction);
     }
 
