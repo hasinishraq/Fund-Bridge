@@ -3,6 +3,9 @@ const homeContent = {
     eyebrow: 'Digital Lending Infrastructure',
     title: 'Bridge the gap between visionary ideas and the funds to build them.',
     lede: 'FundBridge powers community lenders with embedded wallets, realtime compliance, and a borrower-first experience in one modern dashboard.',
+    image:
+      'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1400&q=80',
+    imageAlt: 'Two professionals reviewing plans on a large worktable.',
     metrics: [
       { label: 'Active credit lines', value: '$8.5M' },
       { label: 'Yearly growth', value: '+128%' },
