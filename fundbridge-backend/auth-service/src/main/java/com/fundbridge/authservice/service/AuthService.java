@@ -1,7 +1,9 @@
 package com.fundbridge.authservice.service;
 
 import com.fundbridge.authservice.dto.AuthResponse;
+import com.fundbridge.authservice.dto.ForgotPasswordRequest;
 import com.fundbridge.authservice.dto.LoginRequest;
+import com.fundbridge.authservice.dto.PasswordResetRequest;
 import com.fundbridge.authservice.dto.RefreshTokenRequest;
 import com.fundbridge.authservice.dto.RegisterInitRequest;
 import com.fundbridge.authservice.dto.RegisterRequest;
@@ -12,6 +14,7 @@ import com.fundbridge.authservice.entity.UserRole;
 import com.fundbridge.authservice.entity.UserSettings;
 import com.fundbridge.authservice.entity.UserStatus;
 import com.fundbridge.authservice.exception.ResourceConflictException;
+import com.fundbridge.authservice.exception.ResourceNotFoundException;
 import com.fundbridge.authservice.kyc.KycApplicationService;
 import com.fundbridge.authservice.kyc.dto.CreateApplicantRequest;
 import com.fundbridge.authservice.kyc.dto.KycApplicantResponse;
@@ -100,6 +103,38 @@ public class AuthService {
         UserPrincipal principal = UserPrincipal.from(saved);
         TokenResult tokens = tokenService.issueTokens(principal.getUser());
         return new AuthResponse(tokens.tokens().accessToken(), tokens.tokens().refreshToken(), UserMapper.toResponse(saved));
+    }
+
+    @Transactional
+    public void startPasswordReset(ForgotPasswordRequest request) {
+        recaptchaService.verify(request.captchaToken());
+        String normalizedEmail = normalizeEmail(request.email());
+        userService.findByEmail(normalizedEmail).ifPresentOrElse(user -> {
+            if (user.getStatus() == UserStatus.DISABLED) {
+                log.info("Skipping password reset OTP for disabled account {}", normalizedEmail);
+                return;
+            }
+            otpService.sendPasswordResetOtp(normalizedEmail, user.getId());
+        }, () -> log.info("Password reset requested for non-existing email {}", normalizedEmail));
+    }
+
+    @Transactional
+    public void resetPassword(PasswordResetRequest request) {
+        String normalizedEmail = normalizeEmail(request.email());
+        otpService.verifyPasswordResetOtp(normalizedEmail, request.otp());
+        UserAccount user = userService.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getStatus() == UserStatus.DISABLED) {
+            throw new ResourceConflictException("Account is not active.");
+        }
+        if (user.getStatus() == UserStatus.LOCKED) {
+            user.setStatus(UserStatus.ACTIVE);
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        if (!user.isEmailVerified()) {
+            user.setEmailVerified(true);
+        }
+        userService.save(user);
     }
 
     public AuthResponse login(LoginRequest request, HttpServletRequest httpRequest) {

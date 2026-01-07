@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { fetchLoanDetails } from '../../api/loanApi'
+import { acceptLoan, fetchLoanDetails } from '../../api/loanApi'
+import { payInstallment } from '../../api/repaymentApi'
 import Loader from '../../components/common/Loader'
-import { API_STATUS, CURRENCY_FORMATTER } from '../../utils/constants'
+import { API_STATUS, CURRENCY_FORMATTER, ROLE } from '../../utils/constants'
+import { useAuth } from '../../context/AuthContext'
 
 const statusToneMap = {
   APPROVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
@@ -10,6 +12,8 @@ const statusToneMap = {
   DISBURSED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   ACTIVE: 'bg-sky-50 text-sky-700 border border-sky-200',
   PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  REQUESTED: 'bg-amber-50 text-amber-700 border border-amber-200',
+  FUNDED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   REJECTED: 'bg-rose-50 text-rose-700 border border-rose-200',
   DEFAULTED: 'bg-rose-50 text-rose-700 border border-rose-200',
   CLOSED: 'bg-slate-50 text-slate-700 border border-slate-200',
@@ -29,10 +33,25 @@ const formatDate = (value) =>
       })
     : 'Not available'
 
+const formatDueDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'Not available'
+
 const LoanDetails = () => {
   const { id } = useParams()
+  const { user } = useAuth()
   const [loan, setLoan] = useState(null)
   const [status, setStatus] = useState(API_STATUS.loading)
+  const [actionStatus, setActionStatus] = useState(API_STATUS.idle)
+  const [actionMessage, setActionMessage] = useState('')
+  const [paymentStatus, setPaymentStatus] = useState(API_STATUS.idle)
+  const [paymentMessage, setPaymentMessage] = useState('')
+  const [payingInstallmentId, setPayingInstallmentId] = useState(null)
 
   useEffect(() => {
     const loadLoan = async () => {
@@ -48,6 +67,75 @@ const LoanDetails = () => {
     loadLoan()
   }, [id])
 
+  const canAccept =
+    user?.role === ROLE.BORROWER &&
+    user?.id &&
+    loan?.borrowerId &&
+    user.id === loan.borrowerId &&
+    loan.status === 'FUNDED'
+
+  const canPayInstallment =
+    user?.role === ROLE.BORROWER &&
+    user?.id &&
+    loan?.borrowerId &&
+    user.id === loan.borrowerId &&
+    loan.status === 'ACTIVE'
+
+  const handleAcceptLoan = async () => {
+    if (!loan?.id || !canAccept) {
+      return
+    }
+    setActionStatus(API_STATUS.loading)
+    setActionMessage('')
+    try {
+      await acceptLoan({ loanId: loan.id, borrowerId: user?.id })
+      const refreshed = await fetchLoanDetails(loan.id)
+      setLoan(refreshed)
+      setActionStatus(API_STATUS.success)
+      setActionMessage('Loan accepted. Funds are now released to your wallet.')
+    } catch (error) {
+      console.error(error)
+      setActionStatus(API_STATUS.error)
+      setActionMessage(error?.response?.data?.message || 'Unable to accept this loan.')
+    }
+  }
+
+  const handlePayInstallment = async (installmentId) => {
+    if (!installmentId || !canPayInstallment) {
+      return
+    }
+    setPayingInstallmentId(installmentId)
+    setPaymentStatus(API_STATUS.loading)
+    setPaymentMessage('')
+    try {
+      await payInstallment({ installmentId })
+      const refreshed = await fetchLoanDetails(loan.id)
+      setLoan(refreshed)
+      setPaymentStatus(API_STATUS.success)
+      setPaymentMessage('Installment paid successfully.')
+    } catch (error) {
+      console.error(error)
+      setPaymentStatus(API_STATUS.error)
+      setPaymentMessage(error?.response?.data?.message || 'Unable to pay installment.')
+    } finally {
+      setPayingInstallmentId(null)
+    }
+  }
+
+  const offers = useMemo(() => {
+    const fundings = Array.isArray(loan?.fundings) ? loan.fundings : []
+    return [...fundings].sort((a, b) => {
+      const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0
+      const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : 0
+      return bTime - aTime
+    })
+  }, [loan?.fundings])
+
+  const installments = useMemo(() => {
+    const schedule = Array.isArray(loan?.installments) ? loan.installments : []
+    return [...schedule].sort((a, b) => Number(a.installmentNo || 0) - Number(b.installmentNo || 0))
+  }, [loan?.installments])
+
   const summary = useMemo(
     () => [
       {
@@ -56,11 +144,11 @@ const LoanDetails = () => {
       },
       {
         label: 'Tenure',
-        value: loan?.tenureMonths ? `${loan.tenureMonths} months` : '—',
+        value: loan?.tenureMonths ? `${loan.tenureMonths} months` : 'N/A',
       },
       {
         label: 'Status',
-        value: loan?.status || '—',
+        value: loan?.status || 'N/A',
         tone: getStatusTone(loan?.status),
       },
       {
@@ -115,8 +203,18 @@ const LoanDetails = () => {
                 loan.status,
               )}`}
             >
-              {loan.status?.replace(/_/g, ' ') || '—'}
+              {loan.status?.replace(/_/g, ' ') || 'N/A'}
             </span>
+            {canAccept && (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                onClick={handleAcceptLoan}
+                disabled={actionStatus === API_STATUS.loading}
+              >
+                {actionStatus === API_STATUS.loading ? 'Accepting...' : 'Accept loan'}
+              </button>
+            )}
             <Link
               to="/loans"
               className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-100"
@@ -125,6 +223,15 @@ const LoanDetails = () => {
             </Link>
           </div>
         </div>
+        {actionMessage && (
+          <p
+            className={`mt-3 text-sm ${
+              actionStatus === API_STATUS.error ? 'text-rose-600' : 'text-emerald-600'
+            }`}
+          >
+            {actionMessage}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -155,6 +262,173 @@ const LoanDetails = () => {
         <p className="mt-3 text-sm text-slate-700">
           {loan.purpose || 'No purpose provided.'}
         </p>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">
+              Offers
+            </p>
+            <h2 className="text-xl font-semibold text-slate-900">Lender offers</h2>
+            <p className="text-sm text-slate-600">
+              Review every pledge submitted against this loan.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="stat-chip">{offers.length} offers</span>
+            <span className="stat-chip">
+              Pledged {CURRENCY_FORMATTER.format(loan?.pledgedAmount || 0)}
+            </span>
+            <span className="stat-chip">
+              Captured {CURRENCY_FORMATTER.format(loan?.capturedAmount || 0)}
+            </span>
+          </div>
+        </div>
+
+        {offers.length ? (
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Lender
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Amount
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Pledged at
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Captured at
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {offers.map((offer) => (
+                  <tr key={offer.id || `${offer.lenderId}-${offer.createdAt}`}>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                      {offer.lenderId ? `Lender ${offer.lenderId}` : 'Lender'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-900">
+                      {CURRENCY_FORMATTER.format(offer.amount || 0)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-800">
+                      <span className={`status-chip status-${offer.status}`}>
+                        {offer.status || 'UNKNOWN'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {formatDate(offer.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {offer.capturedAt ? formatDate(offer.capturedAt) : 'Not captured'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
+            No offers yet. Share your loan or check back later for lender activity.
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">
+              Repayments
+            </p>
+            <h2 className="text-xl font-semibold text-slate-900">EMI schedule</h2>
+            <p className="text-sm text-slate-600">
+              Installment dates and total amounts after acceptance.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="stat-chip">{installments.length} installments</span>
+          </div>
+        </div>
+
+        {installments.length ? (
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Installment
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Due date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Amount
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {installments.map((installment) => (
+                  <tr key={installment.id || `${installment.installmentNo}-${installment.dueDate}`}>
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                      #{installment.installmentNo}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {formatDueDate(installment.dueDate)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-900">
+                      {CURRENCY_FORMATTER.format(installment.totalAmount || 0)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-800">
+                      <span className={`status-chip status-${installment.status}`}>
+                        {installment.status || 'DUE'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {canPayInstallment &&
+                      ['DUE', 'LATE'].includes(installment.status || 'DUE') ? (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => handlePayInstallment(installment.id)}
+                          disabled={payingInstallmentId === installment.id}
+                        >
+                          {payingInstallmentId === installment.id ? 'Paying...' : 'Pay now'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-500">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {paymentMessage && (
+              <p
+                className={`mt-3 text-sm ${
+                  paymentStatus === API_STATUS.error ? 'text-rose-600' : 'text-emerald-600'
+                }`}
+              >
+                {paymentMessage}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
+            The EMI schedule will appear once the loan is accepted.
+          </div>
+        )}
       </section>
     </div>
   )

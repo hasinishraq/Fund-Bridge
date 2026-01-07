@@ -24,41 +24,73 @@ public class OtpService {
     private final OtpCodeRepository otpCodeRepository;
     private final HashService hashService;
     private final BrevoEmailService brevoEmailService;
+    private final AuthNotificationService authNotificationService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public OtpService(OtpCodeRepository otpCodeRepository,
                       HashService hashService,
-                      BrevoEmailService brevoEmailService) {
+                      BrevoEmailService brevoEmailService,
+                      AuthNotificationService authNotificationService) {
         this.otpCodeRepository = otpCodeRepository;
         this.hashService = hashService;
         this.brevoEmailService = brevoEmailService;
+        this.authNotificationService = authNotificationService;
     }
 
     @Transactional
     public void sendEmailVerificationOtp(String email) {
-        String sanitizedEmail = email == null ? null : email.trim().toLowerCase();
+        sendEmailVerificationOtp(email, null);
+    }
+
+    @Transactional
+    public void sendPasswordResetOtp(String email) {
+        sendPasswordResetOtp(email, null);
+    }
+
+    @Transactional
+    public void sendEmailVerificationOtp(String email, Long userId) {
+        sendOtp(email, OtpPurpose.EMAIL_VERIFY, userId);
+    }
+
+    @Transactional
+    public void sendPasswordResetOtp(String email, Long userId) {
+        sendOtp(email, OtpPurpose.PASSWORD_RESET, userId);
+    }
+
+    @Transactional
+    public void verifyEmailOtp(String email, String otp) {
+        verifyOtp(email, otp, OtpPurpose.EMAIL_VERIFY);
+    }
+
+    @Transactional
+    public void verifyPasswordResetOtp(String email, String otp) {
+        verifyOtp(email, otp, OtpPurpose.PASSWORD_RESET);
+    }
+
+    private void sendOtp(String email, OtpPurpose purpose, Long userId) {
+        String sanitizedEmail = sanitizeEmail(email);
         if (sanitizedEmail == null || sanitizedEmail.isBlank()) {
             throw new IllegalArgumentException("Email is required for OTP");
         }
         String otp = generateOtp();
         OtpCode code = new OtpCode();
         code.setEmail(sanitizedEmail);
-        code.setPurpose(OtpPurpose.EMAIL_VERIFY);
+        code.setPurpose(purpose);
         code.setOtpHash(hashService.sha256(otp));
         code.setExpiresAt(Instant.now().plus(OTP_TTL));
         otpCodeRepository.save(code);
         brevoEmailService.sendOtpEmail(sanitizedEmail, otp, OTP_TTL.toMinutes());
-        log.info("Dispatched email verification OTP for {}", sanitizedEmail);
+        authNotificationService.notifyOtpInApp(userId, purpose, otp, OTP_TTL.toMinutes());
+        log.info("Dispatched {} OTP for {}", purpose, sanitizedEmail);
     }
 
-    @Transactional
-    public void verifyEmailOtp(String email, String otp) {
-        String sanitizedEmail = email == null ? null : email.trim().toLowerCase();
+    private void verifyOtp(String email, String otp, OtpPurpose purpose) {
+        String sanitizedEmail = sanitizeEmail(email);
         if (sanitizedEmail == null || sanitizedEmail.isBlank()) {
             throw new InvalidOtpException("Email is required");
         }
         OtpCode code = otpCodeRepository.findTopByEmailIgnoreCaseAndPurposeOrderByIdDesc(
-                        sanitizedEmail, OtpPurpose.EMAIL_VERIFY)
+                        sanitizedEmail, purpose)
                 .orElseThrow(() -> new InvalidOtpException("No OTP found for this email"));
 
         if (code.isUsed()) {
@@ -80,6 +112,10 @@ public class OtpService {
 
         code.setUsedAt(Instant.now());
         otpCodeRepository.save(code);
+    }
+
+    private String sanitizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 
     private String generateOtp() {

@@ -7,31 +7,31 @@ const homeContent = {
       'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1400&q=80',
     imageAlt: 'Two professionals reviewing plans on a large worktable.',
     metrics: [
-      { label: 'Active credit lines', value: '$8.5M' },
+      { label: 'Active credit lines', value: 'BDT 8.5Cr' },
       { label: 'Yearly growth', value: '+128%' },
       { label: 'Human support', value: '24/7' },
     ],
     pipeline: [
       {
         title: 'Renewable energy hub',
-        meta: 'USD 350,000 - Awaiting approval',
+        meta: 'BDT 3.5Cr - Awaiting approval',
         status: 'KYC',
         statusStyle: 'warning',
       },
       {
         title: 'Agritech working capital',
-        meta: 'USD 125,000 - Funded',
+        meta: 'BDT 1.25Cr - Funded',
         status: 'Paid',
         statusStyle: 'success',
       },
       {
         title: 'Women in retail expansion',
-        meta: 'USD 80,000 - Disbursing',
+        meta: 'BDT 80L - Disbursing',
         status: 'In flight',
         statusStyle: 'info',
       },
     ],
-    walletBalance: '$214,500.22',
+    walletBalance: 'BDT 21,45,000.22',
     cardTitle: 'Pipeline overview',
     cardStatus: 'Live',
   },
@@ -73,7 +73,7 @@ const homeContent = {
     },
   ],
   stats: [
-    { label: 'Disbursed on FundBridge', value: '$48M+', accent: 'primary' },
+    { label: 'Disbursed on FundBridge', value: 'BDT 480Cr+', accent: 'primary' },
     { label: 'Average approval time', value: '36 hrs', accent: 'secondary' },
     { label: 'Borrower satisfaction', value: '4.9 / 5', accent: 'tertiary' },
   ],
@@ -98,6 +98,38 @@ const homeContent = {
     copy:
       'Create an account and invite your team for a guided onboarding session tailored to your lending thesis.',
   },
+  faqs: [
+    {
+      question: 'How long does onboarding take?',
+      answer:
+        'Most teams are ready within a day. Add your organisation details, complete KYC, and connect a funding source.',
+    },
+    {
+      question: 'Do borrowers and lenders use the same dashboard?',
+      answer:
+        'Each role has a tailored workspace, but everything lives under one secure FundBridge account.',
+    },
+    {
+      question: 'Which currencies are supported?',
+      answer:
+        'BDT is supported by default. Additional currencies can be enabled once your treasury setup is verified.',
+    },
+    {
+      question: 'How do in-app notifications work?',
+      answer:
+        'Activity alerts appear in the dashboard bell, and your team can configure email or in-app delivery.',
+    },
+    {
+      question: 'What happens if a borrower misses a payment?',
+      answer:
+        'We trigger overdue workflows, notify stakeholders, and keep repayment timelines visible to your team.',
+    },
+    {
+      question: 'Is FundBridge compliant-ready?',
+      answer:
+        'Yes. Automated KYC and audit trails are built in, and reports can be exported for regulators.',
+    },
+  ],
 }
 
 export default homeContent

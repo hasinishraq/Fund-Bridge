@@ -20,6 +20,20 @@ wallet:
   demo-user-id: ${WALLET_DEFAULT_USER_ID:1}
   data-encryption-key: ${WALLET_DATA_ENCRYPTION_KEY:}
 
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+
+sslcommerz:
+  enabled: ${SSLCOMMERZ_ENABLED:false}
+  api-base-url: ${SSLCOMMERZ_API_BASE_URL:https://sandbox.sslcommerz.com}
+  store-id: ${SSLCOMMERZ_STORE_ID:}
+  store-password: ${SSLCOMMERZ_STORE_PASSWORD:}
+  success-url: ${SSLCOMMERZ_SUCCESS_URL:http://localhost:8091/payments/sslcommerz/complete}
+  fail-url: ${SSLCOMMERZ_FAIL_URL:http://localhost:8091/payments/sslcommerz/fail}
+  cancel-url: ${SSLCOMMERZ_CANCEL_URL:http://localhost:8091/payments/sslcommerz/cancel}
+
 storage:
   provider: ${STORAGE_PROVIDER:local}
   endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
@@ -31,3 +45,7 @@ storage:
   paths:
     statements: ${STORAGE_STATEMENTS_PATH:statements}
     receipts: ${STORAGE_RECEIPTS_PATH:receipts}
+
+notification:
+  client:
+    base-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8093}

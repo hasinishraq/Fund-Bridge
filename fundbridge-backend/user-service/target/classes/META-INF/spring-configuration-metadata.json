@@ -6,6 +6,11 @@
       "sourceType": "com.fundbridge.userservice.config.CorsProperties"
     },
     {
+      "name": "notification.client",
+      "type": "com.fundbridge.userservice.integration.notification.NotificationClientProperties",
+      "sourceType": "com.fundbridge.userservice.integration.notification.NotificationClientProperties"
+    },
+    {
       "name": "security.jwt",
       "type": "com.fundbridge.userservice.security.JwtProperties",
       "sourceType": "com.fundbridge.userservice.security.JwtProperties"
@@ -42,6 +47,11 @@
       "name": "app.cors.exposed-headers",
       "type": "java.util.List<java.lang.String>",
       "sourceType": "com.fundbridge.userservice.config.CorsProperties"
+    },
+    {
+      "name": "notification.client.base-url",
+      "type": "java.lang.String",
+      "sourceType": "com.fundbridge.userservice.integration.notification.NotificationClientProperties"
     },
     {
       "name": "security.jwt.expiration-seconds",

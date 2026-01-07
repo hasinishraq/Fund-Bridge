@@ -44,8 +44,14 @@ const LoginPage = () => {
           </div>
           <LoginForm onSubmit={login} loading={loading} />
           <p className="mt-4 text-sm text-slate-600">
+            Forgot your password?{' '}
+            <Link to="/forgot-password" className="font-semibold text-[#1f2a5b] hover:text-[#23306b]">
+              Reset it
+            </Link>
+          </p>
+          <p className="mt-2 text-sm text-slate-600">
             Need an account?{' '}
-            <Link to="/register" className="font-semibold text-indigo-700 hover:text-indigo-900">
+            <Link to="/register" className="font-semibold text-[#1f2a5b] hover:text-[#23306b]">
               Register
             </Link>
           </p>

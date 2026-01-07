@@ -21,6 +21,7 @@ com\fundbridge\authservice\kyc\KycApplicationService$NameParts.class
 com\fundbridge\authservice\entity\OtpPurpose.class
 com\fundbridge\authservice\kyc\dto\KycApplicantResponse.class
 com\fundbridge\authservice\service\LoginAuditService.class
+com\fundbridge\authservice\dto\ForgotPasswordRequest.class
 com\fundbridge\authservice\repository\AuthRoleRepository.class
 com\fundbridge\authservice\entity\OtpCode.class
 com\fundbridge\authservice\exception\ResourceNotFoundException.class
@@ -32,6 +33,7 @@ com\fundbridge\authservice\kyc\sumsub\dto\SumsubApplicantResponse$ReviewResult.c
 com\fundbridge\authservice\service\OtpService.class
 com\fundbridge\authservice\repository\RefreshTokenRepository.class
 com\fundbridge\authservice\entity\RefreshToken.class
+com\fundbridge\authservice\dto\PasswordResetRequest.class
 com\fundbridge\authservice\kyc\sumsub\dto\SumsubApplicantResponse.class
 com\fundbridge\authservice\kyc\config\KycConfig.class
 com\fundbridge\authservice\entity\LoginAudit.class

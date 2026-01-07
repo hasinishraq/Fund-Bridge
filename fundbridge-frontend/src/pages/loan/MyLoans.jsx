@@ -11,6 +11,8 @@ const statusToneMap = {
   DISBURSED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   ACTIVE: 'bg-sky-50 text-sky-700 border border-sky-200',
   PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  REQUESTED: 'bg-amber-50 text-amber-700 border border-amber-200',
+  FUNDED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   REJECTED: 'bg-rose-50 text-rose-700 border border-rose-200',
   DEFAULTED: 'bg-rose-50 text-rose-700 border border-rose-200',
   CLOSED: 'bg-slate-50 text-slate-700 border border-slate-200',
@@ -94,7 +96,7 @@ const MyLoans = () => {
         <p className="mt-2 text-lg font-semibold">Unable to load your loans</p>
         <Link
           to="/loans/apply"
-          className="mt-4 inline-flex items-center justify-center rounded-xl bg-rose-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-200"
+          className="mt-4 inline-flex items-center justify-center rounded-xl bg-[#1f2a5b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
         >
           Apply for a loan
         </Link>
@@ -119,7 +121,7 @@ const MyLoans = () => {
           </div>
           <Link
             to="/loans/apply"
-            className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            className="inline-flex items-center justify-center rounded-xl bg-[#1f2a5b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             Apply for new loan
           </Link>
@@ -230,7 +232,7 @@ const MyLoans = () => {
                     <td className="px-4 py-3 text-sm">
                       <Link
                         to={`/loans/${loan.id}`}
-                        className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                        className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-[#1f2a5b] transition hover:-translate-y-[1px] hover:border-[#1f2a5b] hover:text-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
                       >
                         View
                       </Link>

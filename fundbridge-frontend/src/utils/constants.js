@@ -14,10 +14,10 @@ export const getRoleHomePath = (role) =>
   ROLE_HOME_PATH[role] || ROLE_HOME_PATH[ROLE.BORROWER]
 
 export const LOAN_STATUS = [
-  'PENDING',
+  'REQUESTED',
   'APPROVED',
   'FUNDING',
-  'DISBURSED',
+  'FUNDED',
   'ACTIVE',
   'REJECTED',
   'DEFAULTED',
@@ -35,6 +35,8 @@ export const NAV_LINKS = [
   { to: '/dashboard/borrower', label: 'Dashboard', roles: [ROLE.BORROWER], exact: true },
   { to: '/dashboard/borrower/profile', label: 'Profile', roles: [ROLE.BORROWER], exact: true },
   { to: '/dashboard/lender', label: 'Lender Dashboard', roles: [ROLE.LENDER], exact: true },
+  { to: '/loans/marketplace', label: 'Loan Marketplace', roles: [ROLE.LENDER], exact: true },
+  { to: '/loans/offers', label: 'My Offers', roles: [ROLE.LENDER], exact: true },
   { to: '/loans/apply', label: 'Apply Loan', roles: [ROLE.BORROWER], exact: true },
   { to: '/loans', label: 'My Loans', roles: [ROLE.BORROWER], exact: true },
   { to: '/wallet', label: 'Wallet', roles: [ROLE.BORROWER, ROLE.LENDER], exact: true },
@@ -49,7 +51,7 @@ export const NAV_LINKS = [
 
 export const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'BDT',
 })
 
 export const MIN_PASSWORD_LENGTH = 8

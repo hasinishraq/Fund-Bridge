@@ -56,6 +56,7 @@ public class WalletService {
     private final WalletHoldRepository holdRepository;
     private final WalletProperties walletProperties;
     private final EncryptionService encryptionService;
+    private final WalletNotificationService walletNotificationService;
 
     public WalletService(WalletAccountRepository accountRepository,
                          WalletBalanceRepository balanceRepository,
@@ -63,7 +64,8 @@ public class WalletService {
                          WalletLedgerEntryRepository ledgerEntryRepository,
                          WalletHoldRepository holdRepository,
                          WalletProperties walletProperties,
-                         EncryptionService encryptionService) {
+                         EncryptionService encryptionService,
+                         WalletNotificationService walletNotificationService) {
         this.accountRepository = accountRepository;
         this.balanceRepository = balanceRepository;
         this.transactionRepository = transactionRepository;
@@ -71,6 +73,7 @@ public class WalletService {
         this.holdRepository = holdRepository;
         this.walletProperties = walletProperties;
         this.encryptionService = encryptionService;
+        this.walletNotificationService = walletNotificationService;
     }
 
     @Transactional
@@ -92,20 +95,51 @@ public class WalletService {
     }
 
     @Transactional
+    public WalletAccount ensureAccount(Long userId, String currency) {
+        Long resolvedUser = resolveUserId(userId);
+        String resolvedCurrency = normalizeCurrency(currency);
+        return getOrCreateAccount(resolvedUser, resolvedCurrency, true);
+    }
+
+    @Transactional
     public WalletSummaryResponse topUp(WalletTopUpRequest request) {
-        Long userId = resolveUserId(request.userId());
-        String currency = normalizeCurrency(request.currency());
-        BigDecimal amount = normalizeAmount(request.amount());
-        WalletAccount account = getOrCreateAccount(userId, currency, true);
+        FundingResult result = fundWallet(
+                request.userId(),
+                request.currency(),
+                request.amount(),
+                request.referenceType(),
+                request.referenceId(),
+                request.idempotencyKey(),
+                request.metadata()
+        );
+        return toSummary(result.account(), result.balance());
+    }
+
+    @Transactional
+    public FundingResult fundWallet(Long userId,
+                                    String currency,
+                                    BigDecimal amount,
+                                    String referenceType,
+                                    String referenceId,
+                                    String idempotencyKey,
+                                    String metadata) {
+        Long resolvedUser = resolveUserId(userId);
+        String normalizedCurrency = normalizeCurrency(currency);
+        BigDecimal normalizedAmount = normalizeAmount(amount);
+        if (normalizedAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Amount must be greater than zero");
+        }
+
+        WalletAccount account = getOrCreateAccount(resolvedUser, normalizedCurrency, true);
         WalletBalance balance = getOrCreateBalance(account, true);
 
-        String normalizedIdempotency = normalizeIdempotencyKey(request.idempotencyKey());
-        String idempotencyHash = hashIdempotency(userId, normalizedIdempotency);
-        Optional<WalletTransaction> existing = transactionRepository.findByCreatedByUserIdAndIdempotencyHash(userId, idempotencyHash);
+        String normalizedIdempotency = normalizeIdempotencyKey(idempotencyKey);
+        String idempotencyHash = hashIdempotency(resolvedUser, normalizedIdempotency);
+        Optional<WalletTransaction> existing = transactionRepository.findByCreatedByUserIdAndIdempotencyHash(resolvedUser, idempotencyHash);
         if (existing.isPresent()) {
             WalletTransaction tx = existing.get();
             if (tx.getStatus() == TransactionStatus.POSTED) {
-                return toSummary(account, balance);
+                return new FundingResult(account, balance, tx, false);
             }
             throw new ResourceConflictException("Transaction already exists with status " + tx.getStatus());
         }
@@ -113,28 +147,30 @@ public class WalletService {
         WalletTransaction transaction = new WalletTransaction();
         transaction.setTxRef(generateTxRef());
         transaction.setIdempotencyHash(idempotencyHash);
-        transaction.setCreatedByUserId(userId);
+        transaction.setCreatedByUserId(resolvedUser);
         transaction.setType(TransactionType.FUNDING);
         transaction.setStatus(TransactionStatus.PENDING);
         transaction.setToAccount(account);
-        transaction.setAmount(amount);
-        transaction.setCurrency(currency);
-        transaction.setReferenceType(request.referenceType());
-        transaction.setReferenceId(request.referenceId());
-        transaction.setMetadataJson(encryptMetadata(request.metadata(), transaction.getTxRef()));
+        transaction.setAmount(normalizedAmount);
+        transaction.setCurrency(normalizedCurrency);
+        transaction.setReferenceType(referenceType);
+        transaction.setReferenceId(referenceId);
+        transaction.setMetadataJson(encryptMetadata(metadata, transaction.getTxRef()));
         transactionRepository.save(transaction);
 
-        WalletLedgerEntry credit = createLedgerEntry(transaction, account, EntryType.CREDIT, amount, currency);
+        WalletLedgerEntry credit = createLedgerEntry(transaction, account, EntryType.CREDIT, normalizedAmount, normalizedCurrency);
         transaction.getLedgerEntries().add(credit);
 
-        balance.setAvailable(balance.getAvailable().add(amount));
-        balanceRepository.save(balance);
+        balance.setAvailable(balance.getAvailable().add(normalizedAmount));
+        WalletBalance savedBalance = balanceRepository.save(balance);
 
         transaction.setStatus(TransactionStatus.POSTED);
         transaction.setPostedAt(Instant.now());
         transactionRepository.save(transaction);
 
-        return toSummary(account, balance);
+        FundingResult result = new FundingResult(account, savedBalance, transaction, true);
+        walletNotificationService.notifyTopUpSuccess(result);
+        return result;
     }
 
     @Transactional
@@ -204,6 +240,7 @@ public class WalletService {
         transaction.setPostedAt(Instant.now());
         transactionRepository.save(transaction);
 
+        walletNotificationService.notifyTransfer(transaction, fromAccount.getUserId(), toAccount.getUserId());
         return toTransaction(transaction);
     }
 
@@ -261,6 +298,7 @@ public class WalletService {
         hold.setReferenceType(request.referenceType());
         hold.setReferenceId(request.referenceId());
         holdRepository.save(hold);
+        walletNotificationService.notifyHoldCreated(hold);
         return toHold(hold);
     }
 
@@ -280,6 +318,7 @@ public class WalletService {
         hold.setStatus(HoldStatus.RELEASED);
         hold.setReason(request.reason() != null ? request.reason() : hold.getReason());
         holdRepository.save(hold);
+        walletNotificationService.notifyHoldReleased(hold);
         return toHold(hold);
     }
 
@@ -334,6 +373,7 @@ public class WalletService {
         hold.setStatus(HoldStatus.CAPTURED);
         hold.setCapturedTransaction(transaction);
         holdRepository.save(hold);
+        walletNotificationService.notifyHoldCaptured(hold, transaction);
         return toTransaction(transaction);
     }
 
@@ -545,5 +585,9 @@ public class WalletService {
             return null;
         }
         return encryptionService.encrypt(metadata.trim(), aad);
+    }
+
+    public record FundingResult(WalletAccount account, WalletBalance balance, WalletTransaction transaction,
+                                boolean newlyCreated) {
     }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { applyForLoan } from '../../api/loanApi'
 import Loader from '../../components/common/Loader'
 import { useAuth } from '../../context/AuthContext'
@@ -42,7 +42,7 @@ const ApplyLoan = () => {
       }
       const response = await applyForLoan(payload)
       setMessage(
-        `Loan request submitted (ID: ${response?.id ?? 'pending'}) with status ${response?.status ?? 'PENDING'}`,
+        `Loan request submitted (ID: ${response?.id ?? 'pending'}) with status ${response?.status ?? 'REQUESTED'}`,
       )
       setValues(initialState)
       setStatus('SUCCESS')
@@ -62,7 +62,7 @@ const ApplyLoan = () => {
             <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">Apply</p>
             <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Request a loan</h1>
             <p className="text-sm text-slate-600">
-              Share how much you need and how long you need it. We’ll route it for review.
+              Share how much you need and how long you need it. We'll route it for review.
             </p>
           </div>
         </div>
@@ -109,7 +109,7 @@ const ApplyLoan = () => {
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-16 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 />
                 <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-sm font-semibold text-slate-500">
-                  USD
+                  BDT
                 </span>
               </div>
               {errors.amount && (
@@ -157,7 +157,7 @@ const ApplyLoan = () => {
             <button
               type="submit"
               disabled={status === 'LOADING'}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1f2a5b] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {status === 'LOADING' ? 'Submitting...' : 'Submit application'}
             </button>
@@ -177,13 +177,13 @@ const ApplyLoan = () => {
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
               <span className="font-semibold text-slate-800">Amount</span>
               <span className="font-semibold text-slate-900">
-                {values.amount ? CURRENCY_FORMATTER.format(Number(values.amount)) : '—'}
+                {values.amount ? CURRENCY_FORMATTER.format(Number(values.amount)) : '--'}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
               <span className="font-semibold text-slate-800">Tenure</span>
               <span className="font-semibold text-slate-900">
-                {values.tenureMonths ? `${values.tenureMonths} months` : '—'}
+                {values.tenureMonths ? `${values.tenureMonths} months` : '--'}
               </span>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
