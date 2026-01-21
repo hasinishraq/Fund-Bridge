@@ -1,16 +1,21 @@
-﻿import client from './client'
+import client from './client'
 
-export const fetchAdminStats = async () => {
-  const { data } = await client.get('/admin/stats')
+export const fetchAdminActions = async (params = {}) => {
+  const { data } = await client.get('/admin/actions', { params })
   return data
 }
 
-export const fetchUsers = async () => {
-  const { data } = await client.get('/admin/users')
+export const createAdminAction = async (payload) => {
+  const { data } = await client.post('/admin/actions', payload)
   return data
 }
 
-export const fetchPendingLoans = async () => {
-  const { data } = await client.get('/admin/loans/pending')
+export const fetchAdminAuditLogs = async (params = {}) => {
+  const { data } = await client.get('/admin/audit-logs', { params })
+  return data
+}
+
+export const createAdminAuditLog = async (payload) => {
+  const { data } = await client.post('/admin/audit-logs', payload)
   return data
 }

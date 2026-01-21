@@ -9,6 +9,7 @@ import './App.css'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import AdminRegisterPage from './pages/auth/AdminRegisterPage'
 import DashboardRouter from './pages/dashboard/DashboardRouter'
 import Dashboard from './pages/dashboard/Dashboard'
 import LenderDashboard from './pages/dashboard/LenderDashboard'
@@ -46,6 +47,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/admin/register" element={<AdminRegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         <Route element={<PrivateRoute />}>

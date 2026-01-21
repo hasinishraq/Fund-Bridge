@@ -36,6 +36,9 @@ app:
     secret-key: ${AUTH_RECAPTCHA_SECRET_KEY:}
     verify-url: ${AUTH_RECAPTCHA_VERIFY_URL:https://www.google.com/recaptcha/api/siteverify}
     minimum-score: ${AUTH_RECAPTCHA_MIN_SCORE:0.5}
+  admin-registration:
+    enabled: ${AUTH_ADMIN_REGISTRATION_ENABLED:false}
+    secret: ${AUTH_ADMIN_REGISTRATION_SECRET:}
 
 brevo:
   enabled: ${BREVO_ENABLED:true}

@@ -26,7 +26,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class, RecaptchaProperties.class, BrevoProperties.class})
+@EnableConfigurationProperties({
+        JwtProperties.class,
+        CorsProperties.class,
+        RecaptchaProperties.class,
+        BrevoProperties.class,
+        AdminRegistrationProperties.class
+})
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -47,14 +53,16 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST,
-                                "/auth/login",
-                                "/auth/register/init",
-                                "/auth/register/complete",
-                                "/auth/token/refresh",
-                                "/auth/password/forgot",
-                                "/auth/password/reset").permitAll()
+                        .authorizeHttpRequests(auth -> auth
+                                .requestMatchers(HttpMethod.POST,
+                                        "/auth/login",
+                                        "/auth/register/init",
+                                        "/auth/register/complete",
+                                        "/auth/admin/register/init",
+                                        "/auth/admin/register/complete",
+                                        "/auth/token/refresh",
+                                        "/auth/password/forgot",
+                                        "/auth/password/reset").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
