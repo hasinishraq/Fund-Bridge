@@ -54,6 +54,36 @@ export const validateRegister = (
   return errors
 }
 
+export const validateAdminRegister = (
+  { name, email, password, confirmPassword, adminSecret, otp, captchaToken },
+  options = {},
+) => {
+  const { requireCaptcha = false, requireOtp = true } = options
+  const errors = {}
+  if (!isRequired(name)) {
+    errors.name = 'Name is required'
+  }
+  if (!isEmailValid(email)) {
+    errors.email = 'Enter a valid email'
+  }
+  if (!isRequired(password) || password.length < MIN_PASSWORD_LENGTH) {
+    errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+  }
+  if (password !== confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match'
+  }
+  if (!isRequired(adminSecret)) {
+    errors.adminSecret = 'Admin registration secret is required'
+  }
+  if (requireOtp && !isRequired(otp)) {
+    errors.otp = 'Enter the verification code sent to your email'
+  }
+  if (requireCaptcha && !isRequired(captchaToken)) {
+    errors.captchaToken = 'Please complete the captcha challenge'
+  }
+  return errors
+}
+
 export const validatePasswordReset = (
   { email, otp, password, confirmPassword, captchaToken },
   options = {},

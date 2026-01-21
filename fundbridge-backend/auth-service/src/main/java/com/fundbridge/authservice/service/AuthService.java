@@ -1,5 +1,8 @@
 package com.fundbridge.authservice.service;
 
+import com.fundbridge.authservice.config.AdminRegistrationProperties;
+import com.fundbridge.authservice.dto.AdminRegisterInitRequest;
+import com.fundbridge.authservice.dto.AdminRegisterRequest;
 import com.fundbridge.authservice.dto.AuthResponse;
 import com.fundbridge.authservice.dto.ForgotPasswordRequest;
 import com.fundbridge.authservice.dto.LoginRequest;
@@ -29,6 +32,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Locale;
 
@@ -46,6 +51,7 @@ public class AuthService {
     private final TokenService tokenService;
     private final OtpService otpService;
     private final LoginAuditService loginAuditService;
+    private final AdminRegistrationProperties adminRegistrationProperties;
 
     public AuthService(UserService userService,
                        PasswordEncoder passwordEncoder,
@@ -55,7 +61,8 @@ public class AuthService {
                        RoleService roleService,
                        TokenService tokenService,
                        OtpService otpService,
-                       LoginAuditService loginAuditService) {
+                       LoginAuditService loginAuditService,
+                       AdminRegistrationProperties adminRegistrationProperties) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
@@ -65,6 +72,7 @@ public class AuthService {
         this.tokenService = tokenService;
         this.otpService = otpService;
         this.loginAuditService = loginAuditService;
+        this.adminRegistrationProperties = adminRegistrationProperties;
     }
 
     @Transactional
@@ -102,6 +110,40 @@ public class AuthService {
         startKycVerification(saved);
         UserPrincipal principal = UserPrincipal.from(saved);
         TokenResult tokens = tokenService.issueTokens(principal.getUser());
+        return new AuthResponse(tokens.tokens().accessToken(), tokens.tokens().refreshToken(), UserMapper.toResponse(saved));
+    }
+
+    @Transactional
+    public void startAdminRegistration(AdminRegisterInitRequest request) {
+        verifyAdminRegistrationSecret(request.adminSecret());
+        recaptchaService.verify(request.captchaToken());
+        String normalizedEmail = normalizeEmail(request.email());
+        if (userService.existsByEmail(normalizedEmail)) {
+            throw new ResourceConflictException("Email already registered");
+        }
+        otpService.sendEmailVerificationOtp(normalizedEmail);
+    }
+
+    @Transactional
+    public AuthResponse completeAdminRegistration(AdminRegisterRequest request) {
+        verifyAdminRegistrationSecret(request.adminSecret());
+        String normalizedEmail = normalizeEmail(request.email());
+        if (userService.existsByEmail(normalizedEmail)) {
+            throw new ResourceConflictException("Email already registered");
+        }
+        otpService.verifyEmailOtp(normalizedEmail, request.otp());
+
+        UserAccount userAccount = new UserAccount();
+        userAccount.setName(request.name().trim());
+        userAccount.setEmail(normalizedEmail);
+        userAccount.setPasswordHash(passwordEncoder.encode(request.password()));
+        userAccount.setEmailVerified(true);
+        userAccount.setStatus(UserStatus.ACTIVE);
+        userAccount.assignRole(roleService.getRole(UserRole.ADMIN));
+        userAccount.setSettings(new UserSettings());
+
+        UserAccount saved = userService.save(userAccount);
+        TokenResult tokens = tokenService.issueTokens(saved);
         return new AuthResponse(tokens.tokens().accessToken(), tokens.tokens().refreshToken(), UserMapper.toResponse(saved));
     }
 
@@ -201,6 +243,21 @@ public class AuthService {
 
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase(Locale.US);
+    }
+
+    private void verifyAdminRegistrationSecret(String providedSecret) {
+        if (!adminRegistrationProperties.isEnabled()) {
+            throw new ResourceConflictException("Admin registration is disabled");
+        }
+        String configuredSecret = adminRegistrationProperties.getSecret();
+        if (configuredSecret == null || providedSecret == null) {
+            throw new ResourceConflictException("Invalid admin registration secret");
+        }
+        byte[] configuredBytes = configuredSecret.trim().getBytes(StandardCharsets.UTF_8);
+        byte[] providedBytes = providedSecret.trim().getBytes(StandardCharsets.UTF_8);
+        if (!MessageDigest.isEqual(configuredBytes, providedBytes)) {
+            throw new ResourceConflictException("Invalid admin registration secret");
+        }
     }
 
     private String resolveClientIp(HttpServletRequest request) {
