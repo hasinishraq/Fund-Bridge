@@ -1,5 +1,7 @@
 package com.fundbridge.authservice.controller;
 
+import com.fundbridge.authservice.dto.AdminRegisterInitRequest;
+import com.fundbridge.authservice.dto.AdminRegisterRequest;
 import com.fundbridge.authservice.dto.AuthResponse;
 import com.fundbridge.authservice.dto.ForgotPasswordRequest;
 import com.fundbridge.authservice.dto.LoginRequest;
@@ -44,6 +46,17 @@ public class AuthController {
     @PostMapping("/register/complete")
     public ResponseEntity<AuthResponse> completeRegistration(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.completeRegistration(request));
+    }
+
+    @PostMapping("/admin/register/init")
+    public ResponseEntity<Void> startAdminRegistration(@Valid @RequestBody AdminRegisterInitRequest request) {
+        authService.startAdminRegistration(request);
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/admin/register/complete")
+    public ResponseEntity<AuthResponse> completeAdminRegistration(@Valid @RequestBody AdminRegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.completeAdminRegistration(request));
     }
 
     @PostMapping("/login")

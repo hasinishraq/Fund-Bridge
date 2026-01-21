@@ -117,6 +117,20 @@ export const AuthProvider = ({ children }) => {
     [handleAuthSuccess],
   )
 
+  const registerAdmin = useCallback(
+    async (payload) => {
+      setLoading(true)
+      try {
+        const data = await authApi.completeAdminRegistration(payload)
+        handleAuthSuccess(data)
+        return data
+      } finally {
+        setLoading(false)
+      }
+    },
+    [handleAuthSuccess],
+  )
+
   const refreshProfile = useCallback(async () => {
     const profile = await authApi.fetchProfile()
     localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(profile))
@@ -137,10 +151,11 @@ export const AuthProvider = ({ children }) => {
       bootstrapping,
       login,
       register,
+      registerAdmin,
       refreshProfile,
       logout,
     }),
-    [bootstrapping, loading, login, logout, refreshProfile, register, user],
+    [bootstrapping, loading, login, logout, refreshProfile, register, registerAdmin, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

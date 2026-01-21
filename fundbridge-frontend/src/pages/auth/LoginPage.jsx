@@ -55,6 +55,12 @@ const LoginPage = () => {
               Register
             </Link>
           </p>
+          <p className="mt-2 text-sm text-slate-600">
+            Admin onboarding?{' '}
+            <Link to="/admin/register" className="font-semibold text-[#1f2a5b] hover:text-[#23306b]">
+              Register as admin
+            </Link>
+          </p>
         </div>
       </div>
     </section>

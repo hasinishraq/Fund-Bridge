@@ -59,6 +59,39 @@ export const completeRegistration = async ({ name, email, password, role, otp })
   return normalizeAuthResponse(data)
 }
 
+export const startAdminRegistration = async ({
+  name,
+  email,
+  password,
+  adminSecret,
+  captchaToken,
+}) => {
+  await client.post('/auth/admin/register/init', {
+    name,
+    email,
+    password,
+    adminSecret,
+    captchaToken,
+  })
+}
+
+export const completeAdminRegistration = async ({
+  name,
+  email,
+  password,
+  adminSecret,
+  otp,
+}) => {
+  const { data } = await client.post('/auth/admin/register/complete', {
+    name,
+    email,
+    password,
+    adminSecret,
+    otp,
+  })
+  return normalizeAuthResponse(data)
+}
+
 export const fetchProfile = async () => {
   const { data } = await client.get('/auth/me')
   return data
