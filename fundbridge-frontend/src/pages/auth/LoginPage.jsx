@@ -1,17 +1,15 @@
-import { Navigate, Link, useLocation } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import LoginForm from '../../components/auth/LoginForm'
 import { useAuth } from '../../context/AuthContext'
 import { getRoleHomePath } from '../../utils/constants'
 
 const LoginPage = () => {
-  const location = useLocation()
   const { login, isAuthenticated, loading, user } = useAuth()
 
-  const defaultDestination = getRoleHomePath(user?.role)
-  const from = location.state?.from?.pathname || defaultDestination
+  const destination = getRoleHomePath(user?.role)
 
   if (isAuthenticated) {
-    return <Navigate to={from} replace />
+    return <Navigate to={destination} replace />
   }
 
   return (

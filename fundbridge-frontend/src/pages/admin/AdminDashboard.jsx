@@ -1,6 +1,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import {
   createAdminAction,
   createAdminAuditLog,
@@ -8,7 +8,7 @@ import {
   fetchAdminAuditLogs,
 } from '../../api/adminApi'
 import Button from '../../components/common/Button'
-import { API_STATUS, CURRENCY_FORMATTER, ROLE } from '../../utils/constants'
+import { API_STATUS, CURRENCY_FORMATTER, ROLE, getRoleHomePath } from '../../utils/constants'
 import { useAuth } from '../../context/AuthContext'
 
 const SECTION_ANCHORS = {
@@ -1068,11 +1068,7 @@ const AdminDashboard = () => {
   }, [auditLogs, selectedEvent, user])
 
   if (user?.role !== ROLE.ADMIN) {
-    return (
-      <section className="card error-card">
-        <p>Only admins can view this dashboard.</p>
-      </section>
-    )
+    return <Navigate to={getRoleHomePath(user?.role)} replace />
   }
 
   if (pageStatus === API_STATUS.loading) {
