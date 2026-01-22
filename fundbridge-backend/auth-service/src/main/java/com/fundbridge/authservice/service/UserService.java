@@ -21,6 +21,14 @@ public class UserService {
         return userAccountRepository.findByEmailIgnoreCase(email);
     }
 
+    public Optional<UserAccount> findById(Long id) {
+        return userAccountRepository.findById(id);
+    }
+
+    public Optional<UserAccount> findByKycApplicantId(String applicantId) {
+        return userAccountRepository.findByKycApplicantId(applicantId);
+    }
+
     public boolean existsByEmail(String email) {
         return userAccountRepository.existsByEmailIgnoreCase(email);
     }
