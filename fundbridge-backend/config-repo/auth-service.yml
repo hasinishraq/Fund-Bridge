@@ -50,12 +50,13 @@ brevo:
 
 sumsub:
   enabled: ${SUMSUB_ENABLED:true}
-  base-url: ${SUMSUB_BASE_URL:https://test-api.sumsub.com}
+  base-url: ${SUMSUB_BASE_URL:https://api.sumsub.com}
   app-token: ${SUMSUB_APP_TOKEN:}
   secret-key: ${SUMSUB_SECRET_KEY:}
   level-name: ${SUMSUB_LEVEL_NAME:id-only}
   websdk-ttl-seconds: ${SUMSUB_WEBSDK_TTL_SECONDS:900}
-  stub-review-url: ${SUMSUB_STUB_REVIEW_URL:https://kyc-demo.localhost/continue}
+  stub-review-url: ${SUMSUB_STUB_REVIEW_URL:}
+  webhook-secret: ${SUMSUB_WEBHOOK_SECRET:}
 
 notification:
   client:

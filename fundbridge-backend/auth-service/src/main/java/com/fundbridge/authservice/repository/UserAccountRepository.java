@@ -23,6 +23,8 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
 
     Page<UserAccount> findByKycStatus(KycStatus status, Pageable pageable);
 
+    Optional<UserAccount> findByKycApplicantId(String applicantId);
+
     @Query("select u from UserAccount u join u.roles r where lower(u.email) = lower(:email) and r.name = :role")
     Optional<UserAccount> findByEmailAndRole(@Param("email") String email, @Param("role") UserRole role);
 }
