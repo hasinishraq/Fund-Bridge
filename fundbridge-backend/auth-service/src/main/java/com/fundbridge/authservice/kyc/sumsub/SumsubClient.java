@@ -51,8 +51,13 @@ public class SumsubClient {
     }
 
     public SumsubWebSdkLinkResponse createWebSdkLink(SumsubWebSdkLinkRequest request) {
-        String path = "/resources/applicants/-/websdkLink";
+        String path = "/resources/sdkIntegrations/levels/-/websdkLink";
         return exchange(HttpMethod.POST, path, request, SumsubWebSdkLinkResponse.class);
+    }
+
+    public SumsubApplicantResponse getApplicant(String applicantId) {
+        String path = "/resources/applicants/" + applicantId;
+        return exchange(HttpMethod.GET, path, null, SumsubApplicantResponse.class);
     }
 
     private <T> T exchange(HttpMethod method, String path, Object body, Class<T> targetClass) {

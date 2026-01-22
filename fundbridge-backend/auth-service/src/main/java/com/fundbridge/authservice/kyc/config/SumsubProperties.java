@@ -24,7 +24,12 @@ public class SumsubProperties {
      * Optional link to return when outbound KYC is disabled or fails.
      * Helps frontends continue the flow in non-integrated environments.
      */
-    private String stubReviewUrl = "https://kyc-demo.localhost/continue";
+    private String stubReviewUrl;
+
+    /**
+     * Optional webhook secret for verifying Sumsub webhook signatures.
+     */
+    private String webhookSecret;
 
     public boolean isEnabled() {
         return enabled;
@@ -80,5 +85,13 @@ public class SumsubProperties {
 
     public void setStubReviewUrl(String stubReviewUrl) {
         this.stubReviewUrl = stubReviewUrl;
+    }
+
+    public String getWebhookSecret() {
+        return webhookSecret;
+    }
+
+    public void setWebhookSecret(String webhookSecret) {
+        this.webhookSecret = webhookSecret;
     }
 }

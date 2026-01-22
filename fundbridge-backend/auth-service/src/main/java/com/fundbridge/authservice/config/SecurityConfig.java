@@ -62,7 +62,8 @@ public class SecurityConfig {
                                         "/auth/admin/register/complete",
                                         "/auth/token/refresh",
                                         "/auth/password/forgot",
-                                        "/auth/password/reset").permitAll()
+                                        "/auth/password/reset",
+                                        "/kyc/webhook").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())

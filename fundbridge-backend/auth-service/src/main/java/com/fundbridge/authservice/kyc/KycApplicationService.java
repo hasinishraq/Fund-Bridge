@@ -44,17 +44,20 @@ public class KycApplicationService {
                 throw new KycProviderException("KYC provider returned an invalid applicant response");
             }
             String reviewUrl = null;
+            String webSdkUserId = StringUtils.hasText(applicantResponse.externalUserId())
+                    ? applicantResponse.externalUserId()
+                    : externalUserId;
             try {
                 SumsubWebSdkLinkResponse webSdkLink = sumsubClient.createWebSdkLink(
-                        new SumsubWebSdkLinkRequest(externalUserId, properties.getLevelName(), properties.getWebsdkTtlSeconds())
+                        new SumsubWebSdkLinkRequest(webSdkUserId, properties.getLevelName(), properties.getWebsdkTtlSeconds())
                 );
                 reviewUrl = webSdkLink != null ? webSdkLink.url() : null;
             } catch (Exception linkException) {
-                log.warn("Created Sumsub applicant {} for user {} but failed to obtain WebSDK link",
-                        applicantResponse.id(), request.userId(), linkException);
+                log.warn("Created Sumsub applicant {} for user {} but failed to obtain WebSDK link using external id {}",
+                        applicantResponse.id(), request.userId(), webSdkUserId, linkException);
             }
 
-            if (!StringUtils.hasText(reviewUrl)) {
+            if (!StringUtils.hasText(reviewUrl) && StringUtils.hasText(properties.getStubReviewUrl())) {
                 reviewUrl = properties.getStubReviewUrl();
             }
 
@@ -80,18 +83,28 @@ public class KycApplicationService {
         String reviewAnswer = response.review() != null && response.review().reviewResult() != null
                 ? response.review().reviewResult().reviewAnswer()
                 : null;
+        String reviewRejectType = response.review() != null && response.review().reviewResult() != null
+                ? response.review().reviewResult().reviewRejectType()
+                : null;
 
+        return mapStatus(reviewStatus, reviewAnswer, reviewRejectType);
+    }
+
+    public KycStatus mapStatus(String reviewStatus, String reviewAnswer, String reviewRejectType) {
         if (!StringUtils.hasText(reviewStatus)) {
             return KycStatus.PENDING;
         }
-
         return switch (reviewStatus.toLowerCase(Locale.US)) {
-            case "pending" -> KycStatus.IN_REVIEW;
+            case "init" -> KycStatus.PENDING;
+            case "pending", "queued", "prechecked", "awaitingservice", "awaitinguser" -> KycStatus.IN_REVIEW;
             case "completed" -> {
                 if ("green".equalsIgnoreCase(reviewAnswer)) {
                     yield KycStatus.APPROVED;
                 }
                 if ("red".equalsIgnoreCase(reviewAnswer)) {
+                    if ("retry".equalsIgnoreCase(reviewRejectType)) {
+                        yield KycStatus.RESUBMIT_REQUIRED;
+                    }
                     yield KycStatus.REJECTED;
                 }
                 yield KycStatus.IN_REVIEW;
@@ -102,11 +115,28 @@ public class KycApplicationService {
     }
 
     private KycApplicantResponse buildStubResponse(String externalUserId) {
+        String stubUrl = StringUtils.hasText(properties.getStubReviewUrl())
+                ? properties.getStubReviewUrl()
+                : null;
         return new KycApplicantResponse(
                 "stub-" + externalUserId,
                 KycStatus.PENDING,
-                properties.getStubReviewUrl()
+                stubUrl
         );
+    }
+
+    public KycApplicantResponse refreshApplicant(String applicantId, String externalUserId) {
+        if (!properties.isEnabled()) {
+            return buildStubResponse(externalUserId);
+        }
+        if (!StringUtils.hasText(applicantId)) {
+            throw new KycProviderException("KYC applicant id is required to refresh status");
+        }
+        SumsubApplicantResponse applicantResponse = sumsubClient.getApplicant(applicantId);
+        if (applicantResponse == null || !StringUtils.hasText(applicantResponse.id())) {
+            throw new KycProviderException("KYC provider returned an invalid applicant response");
+        }
+        return new KycApplicantResponse(applicantResponse.id(), mapStatus(applicantResponse), null);
     }
 
     private record NameParts(String firstName, String lastName) {
