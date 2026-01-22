@@ -116,3 +116,17 @@ export const resetPassword = async ({ email, otp, newPassword }) => {
     newPassword,
   })
 }
+
+export const createKycApplicant = async ({ userId, fullName, email }) => {
+  const { data } = await client.post('/kyc/applicants', {
+    userId,
+    fullName,
+    email,
+  })
+  return data
+}
+
+export const refreshKycStatus = async () => {
+  const { data } = await client.post('/kyc/refresh')
+  return data
+}
