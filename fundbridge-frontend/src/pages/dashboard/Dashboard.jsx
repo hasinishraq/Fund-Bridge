@@ -6,6 +6,7 @@ import { API_STATUS, CURRENCY_FORMATTER } from '../../utils/constants'
 import { validateLoanPayload } from '../../utils/validators'
 import Loader from '../../components/common/Loader'
 import { useAuth } from '../../context/AuthContext'
+import { createKycApplicant, refreshKycStatus } from '../../api/authApi'
 
 const KYC_MESSAGES = {
   PENDING:
@@ -94,6 +95,7 @@ const Dashboard = () => {
   })
   const { user, refreshProfile, bootstrapping } = useAuth()
   const [kycRefreshing, setKycRefreshing] = useState(false)
+  const [kycStarting, setKycStarting] = useState(false)
   const [quickLoanValues, setQuickLoanValues] = useState({
     amount: '',
     tenureMonths: '',
@@ -197,9 +199,35 @@ const Dashboard = () => {
   const handleRefreshKyc = async () => {
     setKycRefreshing(true)
     try {
+      await refreshKycStatus()
       await refreshProfile()
     } finally {
       setKycRefreshing(false)
+    }
+  }
+
+  const handleStartKyc = async () => {
+    if (!user?.id) {
+      return
+    }
+    setKycStarting(true)
+    try {
+      const response = await createKycApplicant({
+        userId: user.id,
+        fullName: user.name,
+        email: user.email,
+      })
+      if (response?.reviewUrl) {
+        const opened = window.open(response.reviewUrl, '_blank', 'noopener')
+        if (!opened) {
+          window.location.assign(response.reviewUrl)
+        }
+      }
+      await refreshProfile()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setKycStarting(false)
     }
   }
 
@@ -315,6 +343,16 @@ const Dashboard = () => {
               >
                 Continue verification
               </a>
+            )}
+            {!user?.kycReviewUrl && (
+              <button
+                type="button"
+                onClick={handleStartKyc}
+                disabled={kycStarting}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1f2a5b] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {kycStarting ? 'Starting...' : 'Start verification'}
+              </button>
             )}
             <button
               type="button"

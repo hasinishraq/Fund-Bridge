@@ -157,8 +157,12 @@ const RegisterForm = ({ onSubmit, loading }) => {
       return
     }
 
+    let kycPopup = null
     try {
       setFormError('')
+      if (phase === 'verify') {
+        kycPopup = window.open('', '_blank', 'noopener')
+      }
       const result = await onSubmit({
         name: values.name.trim(),
         email: values.email.trim().toLowerCase(),
@@ -168,9 +172,21 @@ const RegisterForm = ({ onSubmit, loading }) => {
       })
       const reviewUrl = result?.user?.kycReviewUrl
       if (reviewUrl) {
-        window.location.assign(reviewUrl)
+        if (kycPopup && !kycPopup.closed) {
+          kycPopup.location.href = reviewUrl
+        } else {
+          const opened = window.open(reviewUrl, '_blank', 'noopener')
+          if (!opened) {
+            window.location.assign(reviewUrl)
+          }
+        }
+      } else if (kycPopup && !kycPopup.closed) {
+        kycPopup.close()
       }
     } catch (error) {
+      if (kycPopup && !kycPopup.closed) {
+        kycPopup.close()
+      }
       resetCaptcha()
       const serverErrors = extractFieldErrors(error)
       if (serverErrors) {

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import Loader from '../../components/common/Loader'
 import { useAuth } from '../../context/AuthContext'
+import { createKycApplicant, refreshKycStatus } from '../../api/authApi'
 
 const statusToneMap = {
   APPROVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
@@ -27,6 +27,7 @@ const KYC_MESSAGES = {
 const BorrowerProfile = () => {
   const { user, bootstrapping, refreshProfile } = useAuth()
   const [refreshing, setRefreshing] = useState(false)
+  const [startingKyc, setStartingKyc] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -35,25 +36,71 @@ const BorrowerProfile = () => {
     KYC_MESSAGES[kycStatus] ||
     'Complete identity verification to access all FundBridge services.'
 
+  const handleStartVerification = async () => {
+    if (!user?.id) {
+      return
+    }
+    setStartingKyc(true)
+    setMessage('')
+    setError('')
+    try {
+      const response = await createKycApplicant({
+        userId: user.id,
+        fullName: user.name,
+        email: user.email,
+      })
+      if (response?.reviewUrl) {
+        const opened = window.open(response.reviewUrl, '_blank', 'noopener')
+        if (!opened) {
+          window.location.assign(response.reviewUrl)
+        }
+      }
+      await refreshProfile()
+      setMessage('Verification link ready')
+    } catch (err) {
+      console.error(err)
+      setError('Unable to start verification right now')
+    } finally {
+      setStartingKyc(false)
+    }
+  }
+
   const verificationActions = useMemo(() => {
-    if (!user?.kycReviewUrl) {
+    if (kycStatus === 'APPROVED') {
       return null
     }
+    if (user?.kycReviewUrl) {
+      return (
+        <a
+          href={user.kycReviewUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center justify-center rounded-xl bg-[#1f2a5b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
+        >
+          Continue verification
+        </a>
+      )
+    }
     return (
-      <Link
-        to={user.kycReviewUrl}
-        className="inline-flex items-center justify-center rounded-xl bg-[#1f2a5b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100"
+      <button
+        type="button"
+        onClick={handleStartVerification}
+        disabled={startingKyc}
+        className="inline-flex items-center justify-center rounded-xl bg-[#1f2a5b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#23306b] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Continue verification
-      </Link>
+        {startingKyc ? 'Starting...' : 'Start verification'}
+      </button>
     )
-  }, [user?.kycReviewUrl])
+  }, [handleStartVerification, kycStatus, startingKyc, user?.kycReviewUrl])
 
   const handleRefresh = async () => {
     setRefreshing(true)
     setMessage('')
     setError('')
     try {
+      if (user?.kycApplicantId && kycStatus !== 'APPROVED') {
+        await refreshKycStatus()
+      }
       await refreshProfile()
       setMessage('Profile refreshed')
     } catch (err) {
@@ -93,7 +140,6 @@ const BorrowerProfile = () => {
             >
               {refreshing ? 'Refreshing...' : 'Refresh profile'}
             </button>
-            {verificationActions}
           </div>
         </div>
         {(message || error) && (
@@ -151,6 +197,7 @@ const BorrowerProfile = () => {
               {kycStatus.replace(/_/g, ' ')}
             </div>
             <p className="text-sm text-slate-700">{kycMessage}</p>
+            {verificationActions && <div className="flex flex-wrap gap-2">{verificationActions}</div>}
             {user?.kycApplicantId && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Applicant ID</p>
