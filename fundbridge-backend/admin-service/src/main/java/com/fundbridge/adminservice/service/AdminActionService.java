@@ -67,6 +67,10 @@ public class AdminActionService {
         );
     }
 
+    AdminActionResponse toResponseForSearch(AdminAction action) {
+        return toResponse(action);
+    }
+
     private String normalizeOptional(String value) {
         if (value == null) {
             return null;

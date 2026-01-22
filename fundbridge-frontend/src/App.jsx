@@ -64,7 +64,8 @@ function App() {
             <Route path="/loans/:id" element={<LoanDetails />} />
             <Route path="/wallet" element={<WalletBalance />} />
             <Route path="/wallet/transactions" element={<Transactions />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
+            <Route path="/admin/*" element={<AdminDashboard />} />
           </Route>
         </Route>
 
