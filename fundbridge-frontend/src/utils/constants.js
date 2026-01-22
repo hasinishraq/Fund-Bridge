@@ -7,7 +7,7 @@ export const ROLE = {
 export const ROLE_HOME_PATH = {
   [ROLE.BORROWER]: '/dashboard/borrower',
   [ROLE.LENDER]: '/dashboard/lender',
-  [ROLE.ADMIN]: '/admin',
+  [ROLE.ADMIN]: '/admin/overview',
 }
 
 export const getRoleHomePath = (role) =>
@@ -46,7 +46,57 @@ export const NAV_LINKS = [
     roles: [ROLE.BORROWER, ROLE.LENDER],
     exact: true,
   },
-  { to: '/admin', label: 'Admin Dashboard', roles: [ROLE.ADMIN], exact: true },
+  { to: '/admin/overview', label: 'Admin Dashboard', roles: [ROLE.ADMIN], exact: true },
+]
+
+export const ADMIN_NAV_GROUPS = [
+  {
+    title: 'Overview',
+    items: [{ to: '/admin/overview', label: 'Overview' }],
+  },
+  {
+    title: 'Users & KYC',
+    items: [{ to: '/admin/users', label: 'Users & KYC' }],
+  },
+  {
+    title: 'Loans',
+    items: [
+      { to: '/admin/loans/applications', label: 'Applications' },
+      { to: '/admin/loans/active', label: 'Active loans' },
+      { to: '/admin/loans/defaults', label: 'Defaults' },
+    ],
+  },
+  {
+    title: 'Wallets & Transactions',
+    items: [
+      { to: '/admin/wallets', label: 'Wallets' },
+      { to: '/admin/transactions', label: 'Transactions' },
+    ],
+  },
+  {
+    title: 'Disputes',
+    items: [{ to: '/admin/disputes', label: 'Disputes & Chargebacks' }],
+  },
+  {
+    title: 'Notifications',
+    items: [{ to: '/admin/notifications', label: 'Notifications' }],
+  },
+  {
+    title: 'Risk & Fraud',
+    items: [{ to: '/admin/risk', label: 'Risk & Fraud' }],
+  },
+  {
+    title: 'Reports',
+    items: [{ to: '/admin/reports', label: 'Reports' }],
+  },
+  {
+    title: 'System',
+    items: [
+      { to: '/admin/system/services', label: 'Services' },
+      { to: '/admin/system/config', label: 'Config' },
+      { to: '/admin/system/audit-logs', label: 'Audit logs' },
+    ],
+  },
 ]
 
 export const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {

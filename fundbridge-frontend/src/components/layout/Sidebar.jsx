@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { NAV_LINKS, ROLE } from '../../utils/constants'
+import { ADMIN_NAV_GROUPS, NAV_LINKS, ROLE } from '../../utils/constants'
 import { useAuth } from '../../context/AuthContext'
 
 const iconMap = {
@@ -27,6 +27,62 @@ const iconMap = {
       />
     </svg>
   ),
+  transaction: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        d="M7 7h10V4l4 4-4 4V9H7V7Zm10 10H7v-2l-4 4 4 4v-3h10v-3Z"
+        fill="currentColor"
+      />
+    </svg>
+  ),
+  user: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2-7 4.5V21h14v-2.5C19 16 16 14 12 14Z"
+        fill="currentColor"
+      />
+    </svg>
+  ),
+  risk: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        d="M12 2 4 5v6c0 5.2 3.6 9.4 8 10.9 4.4-1.5 8-5.7 8-10.9V5l-8-3Zm0 5 4 7H8l4-7Zm0 10a1.2 1.2 0 1 1-1.2 1.2A1.2 1.2 0 0 1 12 17Z"
+        fill="currentColor"
+      />
+    </svg>
+  ),
+  report: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        d="M5 3h14a2 2 0 0 1 2 2v14H3V5a2 2 0 0 1 2-2Zm2 12h2v3H7v-3Zm4-6h2v9h-2V9Zm4 3h2v6h-2v-6Z"
+        fill="currentColor"
+      />
+    </svg>
+  ),
+  notification: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        d="M12 22a2.3 2.3 0 0 0 2.2-1.7H9.8A2.3 2.3 0 0 0 12 22Zm6-6V11a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2Z"
+        fill="currentColor"
+      />
+    </svg>
+  ),
+  dispute: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        d="M4 3h16v10H7l-3 3V3Zm6 4h4v2h-4V7Zm0 4h6v2h-6v-2Z"
+        fill="currentColor"
+      />
+    </svg>
+  ),
+  system: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        d="M12 8.5a3.5 3.5 0 1 0 3.5 3.5A3.5 3.5 0 0 0 12 8.5Zm9 3-2.1-.4a7.6 7.6 0 0 0-.7-1.6l1.3-1.7-1.4-1.4-1.7 1.3a7.6 7.6 0 0 0-1.6-.7L14.5 3h-5l-.4 2.1a7.6 7.6 0 0 0-1.6.7L5.8 4.5 4.4 5.9l1.3 1.7a7.6 7.6 0 0 0-.7 1.6L3 10.5v5l2.1.4a7.6 7.6 0 0 0 .7 1.6l-1.3 1.7 1.4 1.4 1.7-1.3a7.6 7.6 0 0 0 1.6.7l.4 2.1h5l.4-2.1a7.6 7.6 0 0 0 1.6-.7l1.7 1.3 1.4-1.4-1.3-1.7a7.6 7.6 0 0 0 .7-1.6l2.1-.4Z"
+        fill="currentColor"
+      />
+    </svg>
+  ),
   admin: (
     <svg viewBox="0 0 24 24" className="h-4 w-4">
       <path
@@ -38,9 +94,19 @@ const iconMap = {
 }
 
 const getIcon = (to) => {
-  if (to.includes('wallet')) return iconMap.wallet
-  if (to.includes('loan')) return iconMap.loans
-  if (to.includes('admin')) return iconMap.admin
+  const lower = to.toLowerCase()
+  if (lower.includes('overview')) return iconMap.dashboard
+  if (lower.includes('wallet')) return iconMap.wallet
+  if (lower.includes('transaction')) return iconMap.transaction
+  if (lower.includes('loan')) return iconMap.loans
+  if (lower.includes('user') || lower.includes('kyc')) return iconMap.user
+  if (lower.includes('risk') || lower.includes('fraud')) return iconMap.risk
+  if (lower.includes('report')) return iconMap.report
+  if (lower.includes('notif')) return iconMap.notification
+  if (lower.includes('dispute') || lower.includes('chargeback')) return iconMap.dispute
+  if (lower.includes('system') || lower.includes('config') || lower.includes('audit'))
+    return iconMap.system
+  if (lower.includes('admin')) return iconMap.admin
   return iconMap.dashboard
 }
 
@@ -52,8 +118,8 @@ const Sidebar = () => {
   )
   const roleLabel =
     user?.role === ROLE.LENDER ? 'Lender' : user?.role === ROLE.ADMIN ? 'Admin' : 'Borrower'
+  const isAdmin = user?.role === ROLE.ADMIN
   const walletLinks = links.filter((link) => link.to.includes('wallet'))
-  const adminLinks = links.filter((link) => link.to.includes('admin'))
   const mainLinks = links.filter(
     (link) => !link.to.includes('wallet') && !link.to.includes('admin'),
   )
@@ -71,7 +137,7 @@ const Sidebar = () => {
       </div>
 
       <nav className="flex flex-1 flex-col gap-6 px-3 pb-4">
-        {mainLinks.length > 0 && (
+        {!isAdmin && mainLinks.length > 0 && (
           <div className="space-y-2">
             <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
               Workspace
@@ -107,7 +173,7 @@ const Sidebar = () => {
           </div>
         )}
 
-        {walletLinks.length > 0 && (
+        {!isAdmin && walletLinks.length > 0 && (
           <div className="space-y-2">
             <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
               Wallet
@@ -143,41 +209,42 @@ const Sidebar = () => {
           </div>
         )}
 
-        {adminLinks.length > 0 && (
-          <div className="space-y-2">
-            <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
-              Admin
-            </p>
-            <div className="space-y-1">
-              {adminLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.exact !== false}
-                  className={({ isActive }) =>
-                    [
-                      'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
-                      isActive
-                        ? 'bg-white/10 text-white shadow-sm'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white',
-                    ].join(' ')
-                  }
-                >
-                  <span
-                    className={[
-                      'flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-slate-200 transition',
-                      'group-hover:bg-white/15 group-hover:text-white',
-                    ].join(' ')}
-                    aria-hidden="true"
+        {isAdmin &&
+          ADMIN_NAV_GROUPS.map((group) => (
+            <div key={group.title} className="space-y-2">
+              <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                {group.title}
+              </p>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end
+                    className={({ isActive }) =>
+                      [
+                        'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
+                        isActive
+                          ? 'bg-white/10 text-white shadow-sm'
+                          : 'text-slate-300 hover:bg-white/5 hover:text-white',
+                      ].join(' ')
+                    }
                   >
-                    {getIcon(link.to)}
-                  </span>
-                  <span className="truncate">{link.label}</span>
-                </NavLink>
-              ))}
+                    <span
+                      className={[
+                        'flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-slate-200 transition',
+                        'group-hover:bg-white/15 group-hover:text-white',
+                      ].join(' ')}
+                      aria-hidden="true"
+                    >
+                      {getIcon(item.to)}
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          ))}
       </nav>
 
       <div className="px-4 pb-4">
