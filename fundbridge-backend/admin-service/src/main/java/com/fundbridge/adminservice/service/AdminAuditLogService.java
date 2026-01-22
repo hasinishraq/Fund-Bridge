@@ -70,6 +70,10 @@ public class AdminAuditLogService {
         );
     }
 
+    AdminAuditLogResponse toResponseForSearch(AdminAuditLog entry) {
+        return toResponse(entry);
+    }
+
     private String normalizeOptional(String value) {
         if (value == null) {
             return null;
