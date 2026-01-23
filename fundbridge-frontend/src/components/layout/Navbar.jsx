@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { fetchInAppNotifications, markInAppNotificationRead } from '../../api/notificationApi'
-import { getRoleHomePath } from '../../utils/constants'
+import { getRoleHomePath, ROLE } from '../../utils/constants'
 
 const Navbar = () => {
   const { user, logout } = useAuth()
   const brandDestination = getRoleHomePath(user?.role)
   const initials = user?.name?.[0]?.toUpperCase() || 'U'
+  const isBorrower = user?.role === ROLE.BORROWER
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
@@ -116,8 +117,27 @@ const Navbar = () => {
     }
   }
 
+  const headerClassName = [
+    'sticky top-0 z-40 border-b',
+    isBorrower
+      ? 'border-white/30 bg-white/40 backdrop-blur-xl shadow-[0_14px_32px_rgba(15,23,42,0.1)]'
+      : 'border-slate-200 bg-white/95 backdrop-blur',
+  ].join(' ')
+
+  const surfaceClassName = isBorrower
+    ? 'border-white/40 bg-white/70 shadow-[0_8px_20px_rgba(15,23,42,0.08)]'
+    : 'border-slate-200 bg-white shadow-sm'
+
+  const inputClassName = isBorrower
+    ? 'w-full rounded-lg border border-white/60 bg-white/70 py-2 pl-9 pr-12 text-sm text-slate-700 placeholder:text-slate-500 focus:border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-100/70'
+    : 'w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-12 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100'
+
+  const keycapClassName = isBorrower
+    ? 'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-white/60 bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400'
+    : 'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400'
+
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <header className={headerClassName}>
       <div className="flex items-center gap-4 px-5 py-3 lg:px-8">
         <Link
           to={brandDestination}
@@ -145,11 +165,11 @@ const Navbar = () => {
             <input
               type="search"
               placeholder="Search user, loan, txn, reference id..."
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-12 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className={inputClassName}
               ref={searchInputRef}
               aria-label="Global search"
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <span className={keycapClassName}>
               /
             </span>
           </div>
@@ -160,7 +180,7 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => setShowNotifications((prev) => !prev)}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-blue-200 hover:text-slate-700"
+              className={`flex h-9 w-9 items-center justify-center rounded-full border text-slate-500 transition hover:border-blue-200 hover:text-slate-700 ${surfaceClassName}`}
               aria-label="Notifications"
               aria-haspopup="dialog"
               aria-expanded={showNotifications}
@@ -250,7 +270,9 @@ const Navbar = () => {
             )}
           </div>
           {user && (
-            <span className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
+            <span
+              className={`flex items-center gap-3 rounded-full border px-3 py-1.5 ${surfaceClassName}`}
+            >
               <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-900 text-sm font-semibold uppercase text-white">
                 {initials}
               </span>
@@ -265,7 +287,7 @@ const Navbar = () => {
           <button
             type="button"
             onClick={logout}
-            className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-700 transition hover:border-blue-200 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className={`inline-flex items-center rounded-full border px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-700 transition hover:border-blue-200 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-100 ${surfaceClassName}`}
           >
             Sign out
           </button>

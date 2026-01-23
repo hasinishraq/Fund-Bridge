@@ -1395,7 +1395,7 @@ const AdminDashboard = () => {
             </div>
           </label>
           <label>
-            Risk score >=
+            Risk score &gt;=
             <input
               type="number"
               name="riskScore"
@@ -1645,7 +1645,7 @@ const AdminDashboard = () => {
             </select>
           </label>
           <label>
-            Risk score >=
+            Risk score &gt;=
             <input
               type="number"
               name="riskScore"
