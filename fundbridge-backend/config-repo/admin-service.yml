@@ -14,3 +14,11 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
+
+wallet:
+  client:
+    base-url: ${WALLET_SERVICE_URL:http://localhost:8091}
+
+loan:
+  client:
+    base-url: ${LOAN_SERVICE_URL:http://localhost:8092}

@@ -4,8 +4,7 @@ import { Navigate, useParams } from 'react-router-dom'
 import {
   createAdminAction,
   createAdminAuditLog,
-  fetchAdminActions,
-  fetchAdminAuditLogs,
+  fetchAdminDashboardOverview,
 } from '../../api/adminApi'
 import Button from '../../components/common/Button'
 import { API_STATUS, CURRENCY_FORMATTER, ROLE, getRoleHomePath } from '../../utils/constants'
@@ -453,6 +452,31 @@ const resolveErrorMessage = (error, fallback) =>
 
 const formatCurrency = (value) => CURRENCY_FORMATTER.format(value || 0)
 
+const toNumber = (value) => {
+  const parsed = parseNumber(value)
+  return parsed === undefined ? 0 : parsed
+}
+
+const formatMaybeCurrency = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return '--'
+  }
+  const parsed = parseNumber(value)
+  if (parsed === undefined) {
+    return '--'
+  }
+  return formatCurrency(parsed)
+}
+
+const formatPercent = (value) => {
+  const parsed = parseNumber(value)
+  if (parsed === undefined) {
+    return '--'
+  }
+  const normalized = parsed > 1 ? parsed : parsed * 100
+  return `${normalized.toFixed(1)}%`
+}
+
 const AdminDashboard = () => {
   const { user } = useAuth()
   const { '*': sectionPath } = useParams()
@@ -467,6 +491,18 @@ const AdminDashboard = () => {
   const [auditError, setAuditError] = useState('')
   const [actions, setActions] = useState([])
   const [auditLogs, setAuditLogs] = useState([])
+  const [riskEventsData, setRiskEventsData] = useState([])
+  const [approvalItems, setApprovalItems] = useState([])
+  const [alerts, setAlerts] = useState([])
+  const [kpiSnapshot, setKpiSnapshot] = useState(null)
+  const [overviewCounts, setOverviewCounts] = useState({
+    actionCount: 0,
+    auditLogCount: 0,
+    activeAlerts: 0,
+    riskEventCount: 0,
+    approvalCount: 0,
+    uniqueAdminCount: 0,
+  })
   const [refreshing, setRefreshing] = useState(false)
   const [riskFilters, setRiskFilters] = useState({ ...DEFAULT_RISK_FILTERS })
   const [savedView, setSavedView] = useState('all')
@@ -497,12 +533,45 @@ const AdminDashboard = () => {
     setActionsError('')
     setAuditError('')
     try {
-      const [actionsResponse, auditResponse] = await Promise.all([
-        fetchAdminActions({}),
-        fetchAdminAuditLogs({}),
-      ])
-      setActions(Array.isArray(actionsResponse) ? actionsResponse : [])
-      setAuditLogs(Array.isArray(auditResponse) ? auditResponse : [])
+      const overview = await fetchAdminDashboardOverview({
+        riskLimit: 60,
+        approvalLimit: 60,
+        alertLimit: 8,
+        actionLimit: 40,
+        auditLimit: 40,
+      })
+      setActions(Array.isArray(overview?.actions) ? overview.actions : [])
+      setAuditLogs(Array.isArray(overview?.auditLogs) ? overview.auditLogs : [])
+      setRiskEventsData(
+        Array.isArray(overview?.riskEvents)
+          ? overview.riskEvents.map((event) => ({
+              ...event,
+              ref: event.referenceId || event.ref || event.id,
+            }))
+          : [],
+      )
+      setApprovalItems(Array.isArray(overview?.approvals) ? overview.approvals : [])
+      setAlerts(
+        Array.isArray(overview?.alerts)
+          ? overview.alerts.map((alert) => ({
+              ...alert,
+              severity: alert.severity
+                ? alert.severity.toString().toLowerCase()
+                : 'low',
+              action: alert.actionLabel || 'Review',
+              time: formatDateTime(alert.createdAt),
+            }))
+          : [],
+      )
+      setKpiSnapshot(overview?.kpis || null)
+      setOverviewCounts({
+        actionCount: overview?.actionCount ?? 0,
+        auditLogCount: overview?.auditLogCount ?? 0,
+        activeAlerts: overview?.activeAlerts ?? 0,
+        riskEventCount: overview?.riskEventCount ?? 0,
+        approvalCount: overview?.approvalCount ?? 0,
+        uniqueAdminCount: overview?.uniqueAdminCount ?? 0,
+      })
       setActionsStatus(API_STATUS.success)
       setAuditStatus(API_STATUS.success)
     } catch (error) {
@@ -511,6 +580,20 @@ const AdminDashboard = () => {
       setAuditStatus(API_STATUS.error)
       setActionsError(resolveErrorMessage(error, 'Unable to load admin actions'))
       setAuditError(resolveErrorMessage(error, 'Unable to load audit logs'))
+      setActions([])
+      setAuditLogs([])
+      setRiskEventsData([])
+      setApprovalItems([])
+      setAlerts([])
+      setKpiSnapshot(null)
+      setOverviewCounts({
+        actionCount: 0,
+        auditLogCount: 0,
+        activeAlerts: 0,
+        riskEventCount: 0,
+        approvalCount: 0,
+        uniqueAdminCount: 0,
+      })
     } finally {
       setPageStatus(API_STATUS.success)
     }
@@ -566,11 +649,11 @@ const AdminDashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleRefreshAll])
 
-  const riskEvents = useMemo(() => RISK_EVENTS, [])
-  const pendingApprovals = useMemo(() => PENDING_APPROVALS, [])
+  const riskEvents = useMemo(() => riskEventsData, [riskEventsData])
+  const pendingApprovals = useMemo(() => approvalItems, [approvalItems])
 
   const statusOptions = useMemo(() => {
-    return Array.from(new Set(riskEvents.map((event) => event.status))).sort()
+    return Array.from(new Set(riskEvents.map((event) => event.status).filter(Boolean))).sort()
   }, [riskEvents])
 
   const gatewayOptions = useMemo(() => {
@@ -697,9 +780,12 @@ const AdminDashboard = () => {
   }, [auditLogs])
 
   const uniqueAdmins = useMemo(() => {
+    if (overviewCounts && typeof overviewCounts.uniqueAdminCount === 'number') {
+      return overviewCounts.uniqueAdminCount
+    }
     const ids = new Set(actions.map((action) => action?.adminUserId).filter(Boolean))
     return ids.size
-  }, [actions])
+  }, [actions, overviewCounts])
 
   const latestAuditAt = sortedAuditLogs[0]?.createdAt
 
@@ -723,62 +809,76 @@ const AdminDashboard = () => {
     }
   }, [roleBadges])
 
-  const kpiCards = useMemo(
-    () => [
+  const kpiCards = useMemo(() => {
+    const snapshot = kpiSnapshot || {}
+    const inflow = parseNumber(snapshot.walletInflowToday)
+    const outflow = parseNumber(snapshot.walletOutflowToday)
+    const netFlow = (inflow || 0) - (outflow || 0)
+    const netLabel =
+      inflow === undefined && outflow === undefined
+        ? 'Today net --'
+        : `Today net ${formatCurrency(netFlow)}`
+    const failed = snapshot.failedPaymentsCount
+    const webhook = snapshot.webhookFailuresCount
+    const hasFailures = failed !== null && failed !== undefined
+    const hasWebhooks = webhook !== null && webhook !== undefined
+    const failuresLabel =
+      hasFailures || hasWebhooks ? `${failed ?? 0} / ${webhook ?? 0}` : '--'
+
+    return [
       {
         id: 'outstanding',
         label: 'Total outstanding loans',
-        value: formatCurrency(254000000),
-        delta: '+3.2% WoW',
+        value: formatMaybeCurrency(snapshot.totalOutstandingLoans),
+        delta: snapshot.createdAt ? `As of ${formatDateShort(snapshot.createdAt)}` : 'Updated',
         filter: { status: 'High value' },
       },
       {
         id: 'disbursements',
         label: 'Today disbursements',
-        value: formatCurrency(7800000),
-        delta: '+12% DoD',
+        value: formatMaybeCurrency(snapshot.todaysDisbursements),
+        delta: 'Today',
         filter: { status: 'High value' },
       },
       {
         id: 'due-overdue',
         label: 'Due today / overdue',
-        value: formatCurrency(4200000),
-        subValue: formatCurrency(12800000),
-        delta: 'Overdue 30+ view',
+        value: formatMaybeCurrency(snapshot.dueTodayAmount),
+        subValue: formatMaybeCurrency(snapshot.overdueAmount),
+        delta: 'Overdue total',
         filter: { status: 'Overdue 30+' },
       },
       {
         id: 'default-rate',
         label: 'Default rate (30d)',
-        value: '2.8%',
-        delta: '-0.4pp MoM',
+        value: formatPercent(snapshot.defaultRate30d),
+        delta: 'Rolling 30d',
         filter: { status: 'Overdue 30+' },
       },
       {
         id: 'wallet-flow',
         label: 'Wallet inflow / outflow',
-        value: formatCurrency(3100000),
-        subValue: formatCurrency(2400000),
-        delta: 'Today net +0.7m',
+        value: formatMaybeCurrency(snapshot.walletInflowToday),
+        subValue: formatMaybeCurrency(snapshot.walletOutflowToday),
+        delta: netLabel,
         filter: { status: 'Negative balance' },
       },
       {
         id: 'failed-payments',
         label: 'Failed payments / webhook',
-        value: '1.6% / 12',
+        value: failuresLabel,
         delta: 'Last 24h',
         filter: { status: 'Gateway failure' },
       },
       {
         id: 'suspicious',
         label: 'Suspicious activity flags',
-        value: COMPACT_FORMATTER.format(18),
+        value: COMPACT_FORMATTER.format(toNumber(snapshot.suspiciousActivityFlags)),
         delta: 'Action required',
         filter: { status: 'Suspicious activity' },
       },
-    ],
-    [],
-  )
+    ]
+  }, [kpiSnapshot])
 
   const isAllSelected =
     pagedRiskEvents.length > 0 &&
@@ -1158,11 +1258,11 @@ const AdminDashboard = () => {
           <div className="admin-highlights">
             <div className="admin-highlight">
               <small>Actions logged</small>
-              <strong>{actions.length}</strong>
+              <strong>{overviewCounts?.actionCount ?? actions.length}</strong>
             </div>
             <div className="admin-highlight">
               <small>Audit events</small>
-              <strong>{auditLogs.length}</strong>
+              <strong>{overviewCounts?.auditLogCount ?? auditLogs.length}</strong>
             </div>
             <div className="admin-highlight">
               <small>Active admins</small>
@@ -1238,10 +1338,12 @@ const AdminDashboard = () => {
               <p className="eyebrow">Action required</p>
               <h3>Risk and alerts</h3>
             </div>
-            <span className="admin-tag">{ALERTS.length} live</span>
+            <span className="admin-tag">
+              {overviewCounts?.activeAlerts ?? alerts.length} live
+            </span>
           </div>
           <div className="admin-alerts-list">
-            {ALERTS.map((alert) => (
+            {alerts.map((alert) => (
               <div key={alert.id} className="admin-alert-row">
                 <div>
                   <span className={`alert-badge severity-${alert.severity}`}>
@@ -1764,7 +1866,11 @@ const AdminDashboard = () => {
               <p className="eyebrow">Audit trail</p>
               <h3>Admin actions and logs</h3>
             </div>
-            <span className="admin-tag">{actions.length + auditLogs.length} events</span>
+            <span className="admin-tag">
+              {(overviewCounts?.actionCount ?? actions.length) +
+                (overviewCounts?.auditLogCount ?? auditLogs.length)}{' '}
+              events
+            </span>
           </div>
 
           {actionsStatus === API_STATUS.loading && (

@@ -136,27 +136,55 @@ const LoanDetails = () => {
     return [...schedule].sort((a, b) => Number(a.installmentNo || 0) - Number(b.installmentNo || 0))
   }, [loan?.installments])
 
+  const amount = Number(loan?.amount || 0)
+  const pledgedAmount = Number(loan?.pledgedAmount || 0)
+  const capturedAmount = Number(loan?.capturedAmount || 0)
+  const fundingProgress = amount ? Math.min(100, Math.round((pledgedAmount / amount) * 100)) : 0
+  const remainingFunding = Math.max(amount - pledgedAmount, 0)
+
+  const nextInstallment = installments.find((installment) =>
+    ['DUE', 'LATE'].includes(installment?.status || 'DUE'),
+  )
+  const paidInstallments = installments.filter(
+    (installment) => !['DUE', 'LATE'].includes(installment?.status || 'DUE'),
+  ).length
+
+  const statusLabel = loan?.status?.replace(/_/g, ' ') || 'N/A'
+
   const summary = useMemo(
     () => [
       {
-        label: 'Amount',
-        value: CURRENCY_FORMATTER.format(loan?.amount || 0),
+        label: 'Loan amount',
+        value: CURRENCY_FORMATTER.format(amount),
+        helper: 'Requested principal',
       },
       {
         label: 'Tenure',
         value: loan?.tenureMonths ? `${loan.tenureMonths} months` : 'N/A',
+        helper: 'Repayment window',
       },
       {
         label: 'Status',
-        value: loan?.status || 'N/A',
+        value: statusLabel,
         tone: getStatusTone(loan?.status),
       },
       {
         label: 'Created',
         value: formatDate(loan?.createdAt),
+        helper: 'Application date',
+      },
+      {
+        label: 'Pledged',
+        value: CURRENCY_FORMATTER.format(pledgedAmount),
+        helper: 'Total lender commitments',
+      },
+      {
+        label: 'Captured',
+        value: CURRENCY_FORMATTER.format(capturedAmount),
+        helper: 'Funds ready in wallet',
       },
     ],
-    [loan?.amount, loan?.createdAt, loan?.status, loan?.tenureMonths],
+    [amount, capturedAmount, loan?.createdAt, loan?.status, loan?.tenureMonths, pledgedAmount, statusLabel],
   )
 
   if (status === API_STATUS.loading) {
@@ -187,215 +215,283 @@ const LoanDetails = () => {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm md:px-10">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">Loan</p>
-            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">#{loan.id}</h1>
-            <p className="text-sm text-slate-600">
-              {loan.purpose || 'General purpose loan request.'}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${getStatusTone(
-                loan.status,
-              )}`}
-            >
-              {loan.status?.replace(/_/g, ' ') || 'N/A'}
-            </span>
-            {canAccept && (
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                onClick={handleAcceptLoan}
-                disabled={actionStatus === API_STATUS.loading}
-              >
-                {actionStatus === API_STATUS.loading ? 'Accepting...' : 'Accept loan'}
-              </button>
-            )}
-            <Link
-              to="/loans"
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-indigo-200 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            >
-              Back to list
-            </Link>
-          </div>
-        </div>
-        {actionMessage && (
-          <p
-            className={`mt-3 text-sm ${
-              actionStatus === API_STATUS.error ? 'text-rose-600' : 'text-emerald-600'
-            }`}
-          >
-            {actionMessage}
-          </p>
-        )}
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {summary.map((item) => (
-          <div
-            key={item.label}
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm"
-          >
-            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
-            {item.tone ? (
-              <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${item.tone}`}>
-                {item.value}
+    <div className="loan-view">
+      <header className="loan-hero loan-animate" style={{ '--delay': '0ms' }}>
+        <div className="loan-hero__row">
+          <div className="loan-hero__intro">
+            <p className="loan-eyebrow">Borrower view</p>
+            <h1 className="loan-title">Loan #{loan.id}</h1>
+            <p className="loan-subtitle">{loan.purpose || 'General purpose loan request.'}</p>
+            <div className="loan-hero__meta">
+              <span className={`loan-status-pill ${getStatusTone(loan.status)}`}>
+                {statusLabel}
               </span>
-            ) : (
-              <p className="mt-1 text-lg font-semibold text-slate-900">{item.value}</p>
+              <span className="loan-meta-pill">Created {formatDate(loan.createdAt)}</span>
+            </div>
+          </div>
+          <div className="loan-hero__actions">
+            <div className="loan-action-group">
+              {canAccept && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleAcceptLoan}
+                  disabled={actionStatus === API_STATUS.loading}
+                >
+                  {actionStatus === API_STATUS.loading ? 'Accepting...' : 'Accept loan'}
+                </button>
+              )}
+              {canPayInstallment && nextInstallment && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handlePayInstallment(nextInstallment.id)}
+                  disabled={payingInstallmentId === nextInstallment.id}
+                >
+                  {payingInstallmentId === nextInstallment.id
+                    ? 'Paying...'
+                    : 'Pay next installment'}
+                </button>
+              )}
+              <Link to="/loans" className="btn btn-ghost">
+                Back to loans
+              </Link>
+            </div>
+            {actionMessage && (
+              <div
+                className={`loan-callout ${
+                  actionStatus === API_STATUS.error ? 'is-error' : 'is-success'
+                }`}
+              >
+                {actionMessage}
+              </div>
             )}
           </div>
-        ))}
+        </div>
+
+        <div className="loan-metric-grid">
+          {summary.map((item, index) => (
+            <div
+              key={item.label}
+              className="loan-metric loan-animate"
+              style={{ '--delay': `${120 + index * 70}ms` }}
+            >
+              <p className="loan-metric__label">{item.label}</p>
+              {item.tone ? (
+                <span className={`loan-status-pill ${item.tone}`}>{item.value}</span>
+              ) : (
+                <p className="loan-metric__value">{item.value}</p>
+              )}
+              {item.helper && <p className="loan-metric__helper">{item.helper}</p>}
+            </div>
+          ))}
+        </div>
+      </header>
+
+      <div className="loan-info-grid">
+        <section className="loan-card loan-animate" style={{ '--delay': '520ms' }}>
+          <div className="loan-card__header">
+            <div>
+              <p className="loan-card__eyebrow">Funding</p>
+              <h2 className="loan-card__title">Funding progress</h2>
+              <p className="loan-card__subtitle">Track commitments as lenders pledge.</p>
+            </div>
+            <span className="loan-chip">{fundingProgress}% funded</span>
+          </div>
+          <div className="loan-progress">
+            <div className="loan-progress__track">
+              <div className="loan-progress__fill" style={{ width: `${fundingProgress}%` }} />
+            </div>
+            <div className="loan-progress__stats">
+              <div>
+                <p className="loan-progress__label">Pledged</p>
+                <p className="loan-progress__value">
+                  {CURRENCY_FORMATTER.format(pledgedAmount)}
+                </p>
+              </div>
+              <div>
+                <p className="loan-progress__label">Remaining</p>
+                <p className="loan-progress__value">
+                  {CURRENCY_FORMATTER.format(remainingFunding)}
+                </p>
+              </div>
+              <div>
+                <p className="loan-progress__label">Captured</p>
+                <p className="loan-progress__value">
+                  {CURRENCY_FORMATTER.format(capturedAmount)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="loan-card loan-animate" style={{ '--delay': '620ms' }}>
+          <div className="loan-card__header">
+            <div>
+              <p className="loan-card__eyebrow">Repayment</p>
+              <h2 className="loan-card__title">Next installment</h2>
+              <p className="loan-card__subtitle">Your upcoming payment and status.</p>
+            </div>
+            <span className="loan-chip">
+              {installments.length ? `${paidInstallments}/${installments.length} paid` : 'No schedule'}
+            </span>
+          </div>
+          {nextInstallment ? (
+            <div className="loan-next">
+              <div className="loan-next__row">
+                <div>
+                  <p className="loan-next__label">Due date</p>
+                  <p className="loan-next__value">{formatDueDate(nextInstallment.dueDate)}</p>
+                </div>
+                <div>
+                  <p className="loan-next__label">Amount</p>
+                  <p className="loan-next__value">
+                    {CURRENCY_FORMATTER.format(nextInstallment.totalAmount || 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="loan-next__label">Status</p>
+                  <span className={`status-chip status-${nextInstallment.status || 'DUE'}`}>
+                    {nextInstallment.status || 'DUE'}
+                  </span>
+                </div>
+              </div>
+              {paymentMessage && (
+                <div
+                  className={`loan-callout ${
+                    paymentStatus === API_STATUS.error ? 'is-error' : 'is-success'
+                  }`}
+                >
+                  {paymentMessage}
+                </div>
+              )}
+              <div className="loan-next__actions">
+                {canPayInstallment ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => handlePayInstallment(nextInstallment.id)}
+                    disabled={payingInstallmentId === nextInstallment.id}
+                  >
+                    {payingInstallmentId === nextInstallment.id
+                      ? 'Paying...'
+                      : 'Pay next installment'}
+                  </button>
+                ) : (
+                  <p className="loan-muted">Payments unlock once the loan is active.</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="loan-empty">
+              No upcoming installment yet. The schedule appears once the loan is active.
+            </div>
+          )}
+        </section>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
+      <section className="loan-card loan-animate" style={{ '--delay': '700ms' }}>
+        <div className="loan-card__header">
           <div>
-            <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">Purpose</p>
-            <h2 className="text-xl font-semibold text-slate-900">Use of funds</h2>
+            <p className="loan-card__eyebrow">Purpose</p>
+            <h2 className="loan-card__title">Use of funds</h2>
           </div>
         </div>
-        <p className="mt-3 text-sm text-slate-700">
-          {loan.purpose || 'No purpose provided.'}
-        </p>
+        <p className="loan-card__body">{loan.purpose || 'No purpose provided.'}</p>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <section className="loan-card loan-animate" style={{ '--delay': '780ms' }}>
+        <div className="loan-card__header">
           <div>
-            <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">
-              Offers
-            </p>
-            <h2 className="text-xl font-semibold text-slate-900">Lender offers</h2>
-            <p className="text-sm text-slate-600">
-              Review every pledge submitted against this loan.
-            </p>
+            <p className="loan-card__eyebrow">Offers</p>
+            <h2 className="loan-card__title">Lender offers</h2>
+            <p className="loan-card__subtitle">Review every pledge submitted against this loan.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="stat-chip">{offers.length} offers</span>
-            <span className="stat-chip">
-              Pledged {CURRENCY_FORMATTER.format(loan?.pledgedAmount || 0)}
+          <div className="loan-chip-group">
+            <span className="loan-chip">{offers.length} offers</span>
+            <span className="loan-chip">
+              Pledged {CURRENCY_FORMATTER.format(pledgedAmount)}
             </span>
-            <span className="stat-chip">
-              Captured {CURRENCY_FORMATTER.format(loan?.capturedAmount || 0)}
+            <span className="loan-chip">
+              Captured {CURRENCY_FORMATTER.format(capturedAmount)}
             </span>
           </div>
         </div>
 
         {offers.length ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+          <div className="loan-table-wrap">
+            <table className="loan-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Lender
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Pledged at
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Captured at
-                  </th>
+                  <th>Lender</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Pledged at</th>
+                  <th>Captured at</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {offers.map((offer) => (
                   <tr key={offer.id || `${offer.lenderId}-${offer.createdAt}`}>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                    <td className="loan-table__primary">
                       {offer.lenderId ? `Lender ${offer.lenderId}` : 'Lender'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-900">
-                      {CURRENCY_FORMATTER.format(offer.amount || 0)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-800">
-                      <span className={`status-chip status-${offer.status}`}>
+                    <td>{CURRENCY_FORMATTER.format(offer.amount || 0)}</td>
+                    <td>
+                      <span className={`status-chip status-${offer.status || 'UNKNOWN'}`}>
                         {offer.status || 'UNKNOWN'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-700">
-                      {formatDate(offer.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-700">
-                      {offer.capturedAt ? formatDate(offer.capturedAt) : 'Not captured'}
-                    </td>
+                    <td>{formatDate(offer.createdAt)}</td>
+                    <td>{offer.capturedAt ? formatDate(offer.capturedAt) : 'Not captured'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
+          <div className="loan-empty">
             No offers yet. Share your loan or check back later for lender activity.
           </div>
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <section className="loan-card loan-animate" style={{ '--delay': '860ms' }}>
+        <div className="loan-card__header">
           <div>
-            <p className="text-[0.75rem] uppercase tracking-[0.18em] text-slate-500">
-              Repayments
-            </p>
-            <h2 className="text-xl font-semibold text-slate-900">EMI schedule</h2>
-            <p className="text-sm text-slate-600">
+            <p className="loan-card__eyebrow">Repayments</p>
+            <h2 className="loan-card__title">EMI schedule</h2>
+            <p className="loan-card__subtitle">
               Installment dates and total amounts after acceptance.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="stat-chip">{installments.length} installments</span>
-          </div>
+          <span className="loan-chip">{installments.length} installments</span>
         </div>
 
         {installments.length ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+          <div className="loan-table-wrap">
+            <table className="loan-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Installment
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Due date
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Action
-                  </th>
+                  <th>Installment</th>
+                  <th>Due date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {installments.map((installment) => (
                   <tr key={installment.id || `${installment.installmentNo}-${installment.dueDate}`}>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
-                      #{installment.installmentNo}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-700">
-                      {formatDueDate(installment.dueDate)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-900">
-                      {CURRENCY_FORMATTER.format(installment.totalAmount || 0)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-800">
-                      <span className={`status-chip status-${installment.status}`}>
+                    <td className="loan-table__primary">#{installment.installmentNo}</td>
+                    <td>{formatDueDate(installment.dueDate)}</td>
+                    <td>{CURRENCY_FORMATTER.format(installment.totalAmount || 0)}</td>
+                    <td>
+                      <span className={`status-chip status-${installment.status || 'DUE'}`}>
                         {installment.status || 'DUE'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-700">
+                    <td>
                       {canPayInstallment &&
                       ['DUE', 'LATE'].includes(installment.status || 'DUE') ? (
                         <button
@@ -407,7 +503,7 @@ const LoanDetails = () => {
                           {payingInstallmentId === installment.id ? 'Paying...' : 'Pay now'}
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-500">—</span>
+                        <span className="loan-muted">--</span>
                       )}
                     </td>
                   </tr>
@@ -415,19 +511,17 @@ const LoanDetails = () => {
               </tbody>
             </table>
             {paymentMessage && (
-              <p
-                className={`mt-3 text-sm ${
-                  paymentStatus === API_STATUS.error ? 'text-rose-600' : 'text-emerald-600'
+              <div
+                className={`loan-callout ${
+                  paymentStatus === API_STATUS.error ? 'is-error' : 'is-success'
                 }`}
               >
                 {paymentMessage}
-              </p>
+              </div>
             )}
           </div>
         ) : (
-          <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
-            The EMI schedule will appear once the loan is accepted.
-          </div>
+          <div className="loan-empty">The EMI schedule will appear once the loan is accepted.</div>
         )}
       </section>
     </div>

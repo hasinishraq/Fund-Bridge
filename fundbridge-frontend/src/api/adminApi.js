@@ -19,3 +19,8 @@ export const createAdminAuditLog = async (payload) => {
   const { data } = await client.post('/admin/audit-logs', payload)
   return data
 }
+
+export const fetchAdminDashboardOverview = async (params = {}) => {
+  const { data } = await client.get('/admin/dashboard/overview', { params })
+  return data
+}

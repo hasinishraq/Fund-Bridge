@@ -5,10 +5,12 @@ import com.fundbridge.walletservice.dto.CreateHoldRequest;
 import com.fundbridge.walletservice.dto.CreateWalletRequest;
 import com.fundbridge.walletservice.dto.ReleaseHoldRequest;
 import com.fundbridge.walletservice.dto.TransferRequest;
+import com.fundbridge.walletservice.dto.WalletMetricsResponse;
 import com.fundbridge.walletservice.dto.WalletHoldResponse;
 import com.fundbridge.walletservice.dto.WalletSummaryResponse;
 import com.fundbridge.walletservice.dto.WalletTopUpRequest;
 import com.fundbridge.walletservice.dto.WalletTransactionResponse;
+import com.fundbridge.walletservice.service.WalletMetricsService;
 import com.fundbridge.walletservice.service.WalletService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -21,7 +23,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.format.annotation.DateTimeFormat;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -30,9 +34,11 @@ import java.util.List;
 public class WalletController {
 
     private final WalletService walletService;
+    private final WalletMetricsService metricsService;
 
-    public WalletController(WalletService walletService) {
+    public WalletController(WalletService walletService, WalletMetricsService metricsService) {
         this.walletService = walletService;
+        this.metricsService = metricsService;
     }
 
     @GetMapping
@@ -55,6 +61,14 @@ public class WalletController {
     public ResponseEntity<List<WalletTransactionResponse>> transactions(@RequestParam(value = "userId", required = false) Long userId,
                                                                         @RequestParam(value = "currency", required = false) String currency) {
         return ResponseEntity.ok(walletService.listTransactions(userId, currency));
+    }
+
+    @GetMapping("/metrics")
+    public ResponseEntity<WalletMetricsResponse> metrics(
+            @RequestParam(value = "date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(value = "currency", required = false) String currency) {
+        return ResponseEntity.ok(metricsService.getMetrics(date, currency));
     }
 
     @PostMapping("/transfer")

@@ -80,7 +80,7 @@ const Navbar = () => {
     let isActive = true
     setNotificationsLoading(true)
     setNotificationsError('')
-    fetchInAppNotifications({ userId: user.id, unreadOnly: true })
+    fetchInAppNotifications({ userId: user.id, unreadOnly: false })
       .then((data) => {
         if (!isActive) {
           return
@@ -105,13 +105,18 @@ const Navbar = () => {
     }
   }, [showNotifications, user?.id])
 
-  const handleMarkRead = async (notificationId) => {
-    if (!user?.id || !notificationId) {
+  const handleMarkRead = async (notification) => {
+    if (!user?.id || !notification?.id || notification.readAt) {
       return
     }
     try {
-      await markInAppNotificationRead({ userId: user.id, notificationId })
-      setNotifications((prev) => prev.filter((item) => item.id !== notificationId))
+      const updated = await markInAppNotificationRead({
+        userId: user.id,
+        notificationId: notification.id,
+      })
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === notification.id ? { ...item, ...updated } : item)),
+      )
     } catch (error) {
       console.error('Unable to mark notification as read', error)
     }
@@ -236,10 +241,14 @@ const Navbar = () => {
                   )}
                   {user?.id && !notificationsLoading && !notificationsError && notifications.length > 0 && (
                     <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-                      {notifications.map((notification) => (
+                      {notifications.map((notification) => {
+                        const isRead = Boolean(notification.readAt)
+                        return (
                         <div
                           key={notification.id}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm"
+                          className={`rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm ${
+                            isRead ? 'opacity-60' : ''
+                          }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
@@ -255,14 +264,20 @@ const Navbar = () => {
                             </div>
                             <button
                               type="button"
-                              onClick={() => handleMarkRead(notification.id)}
-                              className="text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-600 hover:text-blue-700"
+                              onClick={() => handleMarkRead(notification)}
+                              disabled={isRead}
+                              className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${
+                                isRead
+                                  ? 'cursor-not-allowed text-slate-400'
+                                  : 'text-blue-600 hover:text-blue-700'
+                              }`}
                             >
-                              Mark read
+                              {isRead ? 'Read' : 'Mark read'}
                             </button>
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>

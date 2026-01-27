@@ -8,4 +8,6 @@ import java.util.List;
 public interface AdminRiskEventRepository extends JpaRepository<AdminRiskEvent, Long> {
 
     List<AdminRiskEvent> findAllByOrderByCreatedAtDesc();
+
+    long countByStatusIgnoreCase(String status);
 }
