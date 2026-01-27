@@ -1,6 +1,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import {
   createAdminAction,
   createAdminAuditLog,
@@ -25,6 +25,80 @@ const SECTION_ANCHORS = {
   'system/services': 'system-services',
   'system/config': 'system-config',
   'system/audit-logs': 'system-audit-logs',
+}
+
+const PAGE_META = {
+  overview: {
+    eyebrow: 'Admin console',
+    title: 'Operations control room',
+    description:
+      'Monitor loan health, payments integrity, and escalation queues from one command surface.',
+  },
+  users: {
+    eyebrow: 'User compliance',
+    title: 'Users & KYC',
+    description: 'Review identity verification, onboarding, and escalated profile checks.',
+  },
+  'loans/applications': {
+    eyebrow: 'Loan review',
+    title: 'Loan applications',
+    description: 'Approve, request info, or escalate incoming loan requests.',
+  },
+  'loans/active': {
+    eyebrow: 'Portfolio view',
+    title: 'Active loans',
+    description: 'Track live repayment behavior and risk indicators across the portfolio.',
+  },
+  'loans/defaults': {
+    eyebrow: 'Collections',
+    title: 'Defaults & overdue',
+    description: 'Prioritize recovery and monitor delinquency hotspots.',
+  },
+  wallets: {
+    eyebrow: 'Wallet operations',
+    title: 'Wallets',
+    description: 'Monitor wallet balances, inflow trends, and outbound flows.',
+  },
+  transactions: {
+    eyebrow: 'Payments',
+    title: 'Transactions',
+    description: 'Review gateway performance, failures, and settlement status.',
+  },
+  disputes: {
+    eyebrow: 'Disputes',
+    title: 'Disputes & chargebacks',
+    description: 'Track chargebacks, claims, and remediation queues.',
+  },
+  notifications: {
+    eyebrow: 'Communications',
+    title: 'Notifications',
+    description: 'Audit outbound alerts, reminders, and escalation messages.',
+  },
+  risk: {
+    eyebrow: 'Risk & fraud',
+    title: 'Risk console',
+    description: 'Investigate anomalies, suspicious activity, and risk flags.',
+  },
+  reports: {
+    eyebrow: 'Analytics',
+    title: 'Reports',
+    description: 'Export performance snapshots and compliance reporting.',
+  },
+  'system/services': {
+    eyebrow: 'System health',
+    title: 'Services',
+    description: 'Monitor service availability, latency, and uptime.',
+  },
+  'system/config': {
+    eyebrow: 'System config',
+    title: 'Config changes',
+    description: 'Review configuration updates and approvals.',
+  },
+  'system/audit-logs': {
+    eyebrow: 'Audit trail',
+    title: 'Audit logs',
+    description: 'Inspect admin actions and service logs.',
+  },
 }
 
 const DEFAULT_RISK_FILTERS = {
@@ -479,9 +553,10 @@ const formatPercent = (value) => {
 
 const AdminDashboard = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { '*': sectionPath } = useParams()
   const activeSection = sectionPath ? sectionPath.replace(/\/$/, '') : 'overview'
-  const anchorTarget = SECTION_ANCHORS[activeSection] || 'overview'
+  const resolvedSection = SECTION_ANCHORS[activeSection] ? activeSection : 'overview'
   const riskTableRef = useRef(null)
 
   const [pageStatus, setPageStatus] = useState(API_STATUS.loading)
@@ -518,6 +593,43 @@ const AdminDashboard = () => {
   const [actionSubmitting, setActionSubmitting] = useState(false)
   const [toasts, setToasts] = useState([])
   const [activeMetric, setActiveMetric] = useState('')
+
+  const isOverview = resolvedSection === 'overview'
+  const isUsersPage = resolvedSection === 'users'
+  const isLoanApplicationsPage = resolvedSection === 'loans/applications'
+  const isLoanActivePage = resolvedSection === 'loans/active'
+  const isLoanDefaultsPage = resolvedSection === 'loans/defaults'
+  const isWalletsPage = resolvedSection === 'wallets'
+  const isTransactionsPage = resolvedSection === 'transactions'
+  const isDisputesPage = resolvedSection === 'disputes'
+  const isNotificationsPage = resolvedSection === 'notifications'
+  const isRiskPage = resolvedSection === 'risk'
+  const isReportsPage = resolvedSection === 'reports'
+  const isSystemServicesPage = resolvedSection === 'system/services'
+  const isSystemConfigPage = resolvedSection === 'system/config'
+  const isSystemAuditPage = resolvedSection === 'system/audit-logs'
+
+  const approvalTypeLock = isUsersPage ? 'KYC' : isLoanApplicationsPage ? 'Loan' : ''
+
+  const effectiveApprovalFilters = useMemo(
+    () => (approvalTypeLock ? { ...approvalFilters, type: approvalTypeLock } : approvalFilters),
+    [approvalFilters, approvalTypeLock],
+  )
+
+  const showRiskTable =
+    isOverview || isRiskPage || isLoanActivePage || isLoanDefaultsPage
+  const showApprovalsTable = isOverview || isUsersPage || isLoanApplicationsPage
+  const showAlertsPanel =
+    isOverview || isRiskPage || isDisputesPage || isNotificationsPage
+  const showPipelinePanel = isOverview || isLoanDefaultsPage
+  const showChartsGrid = isOverview || isReportsPage
+  const showSystemGrid =
+    isOverview || isSystemServicesPage || isSystemConfigPage || isSystemAuditPage
+  const showSystemServices = isOverview || isSystemServicesPage
+  const showSystemConfig = isOverview || isSystemConfigPage
+  const showSystemAudit = isOverview || isSystemAuditPage
+
+  const pageMeta = PAGE_META[resolvedSection] || PAGE_META.overview
 
   const addToast = useCallback((toast) => {
     const id = Date.now() + Math.random()
@@ -610,16 +722,6 @@ const AdminDashboard = () => {
     setPageStatus(API_STATUS.loading)
     loadSystemData()
   }, [user, loadSystemData])
-
-  useEffect(() => {
-    if (!anchorTarget || anchorTarget === 'overview') {
-      return
-    }
-    const element = document.getElementById(anchorTarget)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [anchorTarget])
 
   const handleRefreshAll = useCallback(async () => {
     setRefreshing(true)
@@ -752,12 +854,12 @@ const AdminDashboard = () => {
   }, [riskFilters, riskPage])
 
   const filteredApprovals = useMemo(() => {
-    const minRisk = parseNumber(approvalFilters.riskScore)
+    const minRisk = parseNumber(effectiveApprovalFilters.riskScore)
     return pendingApprovals.filter((item) => {
-      if (approvalFilters.type && item.type !== approvalFilters.type) {
+      if (effectiveApprovalFilters.type && item.type !== effectiveApprovalFilters.type) {
         return false
       }
-      if (approvalFilters.status && item.status !== approvalFilters.status) {
+      if (effectiveApprovalFilters.status && item.status !== effectiveApprovalFilters.status) {
         return false
       }
       if (minRisk !== undefined && item.riskScore < minRisk) {
@@ -765,7 +867,7 @@ const AdminDashboard = () => {
       }
       return true
     })
-  }, [pendingApprovals, approvalFilters])
+  }, [pendingApprovals, effectiveApprovalFilters])
 
   const sortedActions = useMemo(() => {
     return [...actions].sort(
@@ -880,6 +982,48 @@ const AdminDashboard = () => {
     ]
   }, [kpiSnapshot])
 
+  const pageKpiCards = useMemo(() => {
+    if (isOverview) {
+      return kpiCards
+    }
+    if (isWalletsPage) {
+      return kpiCards.filter((card) => card.id === 'wallet-flow')
+    }
+    if (isTransactionsPage) {
+      return kpiCards.filter((card) => card.id === 'failed-payments')
+    }
+    if (isRiskPage) {
+      return kpiCards.filter((card) =>
+        ['suspicious', 'failed-payments'].includes(card.id),
+      )
+    }
+    if (isLoanApplicationsPage) {
+      return kpiCards.filter((card) =>
+        ['disbursements', 'outstanding'].includes(card.id),
+      )
+    }
+    if (isLoanActivePage) {
+      return kpiCards.filter((card) =>
+        ['outstanding', 'due-overdue'].includes(card.id),
+      )
+    }
+    if (isLoanDefaultsPage) {
+      return kpiCards.filter((card) =>
+        ['due-overdue', 'default-rate'].includes(card.id),
+      )
+    }
+    return []
+  }, [
+    kpiCards,
+    isOverview,
+    isWalletsPage,
+    isTransactionsPage,
+    isRiskPage,
+    isLoanApplicationsPage,
+    isLoanActivePage,
+    isLoanDefaultsPage,
+  ])
+
   const isAllSelected =
     pagedRiskEvents.length > 0 &&
     pagedRiskEvents.every((event) => selectedRiskIds.includes(event.id))
@@ -923,6 +1067,9 @@ const AdminDashboard = () => {
 
   const handleApprovalFilterChange = (event) => {
     const { name, value } = event.target
+    if (approvalTypeLock && name === 'type') {
+      return
+    }
     setApprovalFilters((prev) => ({ ...prev, [name]: value }))
   }
 
@@ -951,7 +1098,11 @@ const AdminDashboard = () => {
     setRiskFilters({ ...DEFAULT_RISK_FILTERS, ...card.filter })
     setSavedView('custom')
     setRiskPage(1)
-    riskTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (showRiskTable) {
+      riskTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      navigate('/admin/risk')
+    }
   }
 
   const handleReferenceLookup = () => {
@@ -967,7 +1118,11 @@ const AdminDashboard = () => {
     setRiskFilters((prev) => ({ ...prev, query }))
     setSavedView('custom')
     setRiskPage(1)
-    riskTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (showRiskTable) {
+      riskTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      navigate('/admin/risk')
+    }
   }
 
   const handleExportCsv = () => {
@@ -1202,173 +1357,193 @@ const AdminDashboard = () => {
 
   return (
     <div className="dashboard admin-dashboard admin-console flowdash">
-      <section className="admin-header admin-panel flow-stagger" id="overview">
-        <div className="admin-header-main">
-          <p className="eyebrow">Admin console</p>
-          <h1>Operations control room</h1>
-          <p>
-            Monitor loan health, payments integrity, and escalation queues from one
-            command surface.
-          </p>
-          <div className="admin-header-actions">
-            <Button variant="primary" onClick={handleRefreshAll} disabled={refreshing}>
-              {refreshing ? 'Refreshing...' : 'Refresh data'}
-            </Button>
-            <Button variant="secondary" onClick={handleExportCsv}>
-              Export report
-            </Button>
-          </div>
-          <div className="admin-role-badges">
-            {roleBadges.map((badge) => (
-              <span
-                key={badge.label}
-                className={`role-badge ${badge.active ? 'active' : 'inactive'}`}
-              >
-                {badge.label}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="admin-header-side">
-          <div className="admin-reference-card">
-            <p className="eyebrow">Global search</p>
-            <h3>Reference lookup</h3>
-            <div className="admin-reference-input">
-              <input
-                type="text"
-                value={referenceQuery}
-                onChange={(event) => setReferenceQuery(event.target.value)}
-                placeholder="Reference id, user_id, loan_id, txn_ref, webhook id"
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    handleReferenceLookup()
-                  }
-                }}
-              />
-              <button type="button" onClick={handleReferenceLookup}>
-                Lookup
-              </button>
-            </div>
-            <p className="admin-hint">
-              Search by user_id, phone, email, loan_id, wallet_account_id, txn_ref,
-              gateway_ref, webhook id.
+      {isOverview ? (
+        <section className="admin-header admin-panel flow-stagger" id="overview">
+          <div className="admin-header-main">
+            <p className="eyebrow">Admin console</p>
+            <h1>Operations control room</h1>
+            <p>
+              Monitor loan health, payments integrity, and escalation queues from one
+              command surface.
             </p>
-            <p className="admin-shortcuts">Shortcuts: / search, Ctrl+K search, Shift+R refresh.</p>
+            <div className="admin-header-actions">
+              <Button variant="primary" onClick={handleRefreshAll} disabled={refreshing}>
+                {refreshing ? 'Refreshing...' : 'Refresh data'}
+              </Button>
+              <Button variant="secondary" onClick={handleExportCsv}>
+                Export report
+              </Button>
+            </div>
+            <div className="admin-role-badges">
+              {roleBadges.map((badge) => (
+                <span
+                  key={badge.label}
+                  className={`role-badge ${badge.active ? 'active' : 'inactive'}`}
+                >
+                  {badge.label}
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="admin-highlights">
-            <div className="admin-highlight">
-              <small>Actions logged</small>
-              <strong>{overviewCounts?.actionCount ?? actions.length}</strong>
+          <div className="admin-header-side">
+            <div className="admin-reference-card">
+              <p className="eyebrow">Global search</p>
+              <h3>Reference lookup</h3>
+              <div className="admin-reference-input">
+                <input
+                  type="text"
+                  value={referenceQuery}
+                  onChange={(event) => setReferenceQuery(event.target.value)}
+                  placeholder="Reference id, user_id, loan_id, txn_ref, webhook id"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      handleReferenceLookup()
+                    }
+                  }}
+                />
+                <button type="button" onClick={handleReferenceLookup}>
+                  Lookup
+                </button>
+              </div>
+              <p className="admin-hint">
+                Search by user_id, phone, email, loan_id, wallet_account_id, txn_ref,
+                gateway_ref, webhook id.
+              </p>
+              <p className="admin-shortcuts">
+                Shortcuts: / search, Ctrl+K search, Shift+R refresh.
+              </p>
             </div>
-            <div className="admin-highlight">
-              <small>Audit events</small>
-              <strong>{overviewCounts?.auditLogCount ?? auditLogs.length}</strong>
-            </div>
-            <div className="admin-highlight">
-              <small>Active admins</small>
-              <strong>{uniqueAdmins}</strong>
-            </div>
-            <div className="admin-highlight">
-              <small>Latest audit</small>
-              <strong>{formatDateShort(latestAuditAt)}</strong>
+            <div className="admin-highlights">
+              <div className="admin-highlight">
+                <small>Actions logged</small>
+                <strong>{overviewCounts?.actionCount ?? actions.length}</strong>
+              </div>
+              <div className="admin-highlight">
+                <small>Audit events</small>
+                <strong>{overviewCounts?.auditLogCount ?? auditLogs.length}</strong>
+              </div>
+              <div className="admin-highlight">
+                <small>Active admins</small>
+                <strong>{uniqueAdmins}</strong>
+              </div>
+              <div className="admin-highlight">
+                <small>Latest audit</small>
+                <strong>{formatDateShort(latestAuditAt)}</strong>
+              </div>
             </div>
           </div>
+        </section>
+      ) : (
+        <section className="admin-header admin-panel admin-header--compact flow-stagger">
+          <div className="admin-header-main">
+            <p className="eyebrow">{pageMeta.eyebrow}</p>
+            <h1>{pageMeta.title}</h1>
+            <p>{pageMeta.description}</p>
+            <div className="admin-header-actions">
+              <Button variant="primary" onClick={handleRefreshAll} disabled={refreshing}>
+                {refreshing ? 'Refreshing...' : 'Refresh data'}
+              </Button>
+              <Button variant="secondary" onClick={handleExportCsv}>
+                Export report
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {pageKpiCards.length > 0 && (
+        <div className="admin-kpi-grid flow-stagger">
+          {pageKpiCards.map((card) => (
+            <button
+              key={card.id}
+              type="button"
+              className={`admin-kpi-card ${activeMetric === card.id ? 'is-active' : ''}`}
+              onClick={() => handleMetricClick(card)}
+              aria-pressed={activeMetric === card.id}
+            >
+              <span className="admin-kpi-label">{card.label}</span>
+              <strong className="admin-kpi-value">{card.value}</strong>
+              {card.subValue && (
+                <span className="admin-kpi-sub">{card.subValue}</span>
+              )}
+              <span className="admin-kpi-meta">{card.delta}</span>
+              <span className="admin-kpi-cta">View list</span>
+            </button>
+          ))}
         </div>
-      </section>
+      )}
 
-      <div className="admin-kpi-grid flow-stagger">
-        {kpiCards.map((card) => (
-          <button
-            key={card.id}
-            type="button"
-            className={`admin-kpi-card ${activeMetric === card.id ? 'is-active' : ''}`}
-            onClick={() => handleMetricClick(card)}
-            aria-pressed={activeMetric === card.id}
-          >
-            <span className="admin-kpi-label">{card.label}</span>
-            <strong className="admin-kpi-value">{card.value}</strong>
-            {card.subValue && (
-              <span className="admin-kpi-sub">{card.subValue}</span>
-            )}
-            <span className="admin-kpi-meta">{card.delta}</span>
-            <span className="admin-kpi-cta">View list</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="admin-anchor" id="loan-defaults" />
-      <div className="admin-anchor" id="risk-alerts" />
-      <div className="admin-anchor" id="disputes" />
-      <div className="admin-anchor" id="notifications" />
-
-      <section className="admin-focus-grid flow-stagger">
-        <article className="panel admin-panel admin-pipeline">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Collections pipeline</p>
-              <h3>Due today to 30+ overdue</h3>
-            </div>
-            <span className="admin-tag">Decision chart</span>
-          </div>
-          <div className="admin-pipeline-list">
-            {COLLECTIONS_PIPELINE.map((stage) => (
-              <div key={stage.label} className="admin-pipeline-row">
-                <div className="admin-pipeline-meta">
-                  <div>
-                    <strong>{stage.label}</strong>
-                    <span>
-                      {COMPACT_FORMATTER.format(stage.count)} accounts
-                    </span>
-                  </div>
-                  <span className="admin-pipeline-amount">
-                    {formatCurrency(stage.amount)}
-                  </span>
-                </div>
-                <div className="admin-pipeline-bar" title={`${stage.percent}% of due today`}>
-                  <span style={{ width: `${stage.percent}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel admin-panel admin-alerts">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Action required</p>
-              <h3>Risk and alerts</h3>
-            </div>
-            <span className="admin-tag">
-              {overviewCounts?.activeAlerts ?? alerts.length} live
-            </span>
-          </div>
-          <div className="admin-alerts-list">
-            {alerts.map((alert) => (
-              <div key={alert.id} className="admin-alert-row">
+      {(showPipelinePanel || showAlertsPanel) && (
+        <section className="admin-focus-grid flow-stagger">
+          {showPipelinePanel && (
+            <article className="panel admin-panel admin-pipeline">
+              <div className="panel-header">
                 <div>
-                  <span className={`alert-badge severity-${alert.severity}`}>
-                    {alert.severity}
-                  </span>
-                  <p>{alert.title}</p>
-                  <span className="admin-muted">{alert.detail}</span>
+                  <p className="eyebrow">Collections pipeline</p>
+                  <h3>Due today to 30+ overdue</h3>
                 </div>
-                <div className="admin-alert-actions">
-                  <span className="admin-muted">{alert.time}</span>
-                  <button type="button" onClick={() => handleAlertAction(alert)}>
-                    {alert.action}
-                  </button>
-                </div>
+                <span className="admin-tag">Decision chart</span>
               </div>
-            ))}
-          </div>
-        </article>
-      </section>
+              <div className="admin-pipeline-list">
+                {COLLECTIONS_PIPELINE.map((stage) => (
+                  <div key={stage.label} className="admin-pipeline-row">
+                    <div className="admin-pipeline-meta">
+                      <div>
+                        <strong>{stage.label}</strong>
+                        <span>
+                          {COMPACT_FORMATTER.format(stage.count)} accounts
+                        </span>
+                      </div>
+                      <span className="admin-pipeline-amount">
+                        {formatCurrency(stage.amount)}
+                      </span>
+                    </div>
+                    <div className="admin-pipeline-bar" title={`${stage.percent}% of due today`}>
+                      <span style={{ width: `${stage.percent}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          )}
 
-      <div className="admin-anchor" id="reports" />
-      <div className="admin-anchor" id="wallets" />
-      <div className="admin-anchor" id="transactions" />
+          {showAlertsPanel && (
+            <article className="panel admin-panel admin-alerts">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Action required</p>
+                  <h3>Risk and alerts</h3>
+                </div>
+                <span className="admin-tag">
+                  {overviewCounts?.activeAlerts ?? alerts.length} live
+                </span>
+              </div>
+              <div className="admin-alerts-list">
+                {alerts.map((alert) => (
+                  <div key={alert.id} className="admin-alert-row">
+                    <div>
+                      <span className={`alert-badge severity-${alert.severity}`}>
+                        {alert.severity}
+                      </span>
+                      <p>{alert.title}</p>
+                      <span className="admin-muted">{alert.detail}</span>
+                    </div>
+                    <div className="admin-alert-actions">
+                      <span className="admin-muted">{alert.time}</span>
+                      <button type="button" onClick={() => handleAlertAction(alert)}>
+                        {alert.action}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          )}
+        </section>
+      )}
 
-      <section className="admin-charts-grid flow-stagger">
+      {showChartsGrid && (
+        <section className="admin-charts-grid flow-stagger">
         <article className="panel admin-panel">
           <div className="panel-header">
             <div>
@@ -1444,10 +1619,10 @@ const AdminDashboard = () => {
           </div>
         </article>
       </section>
+      )}
 
-      <div className="admin-anchor" id="loan-active" ref={riskTableRef} />
-
-      <section className="panel admin-panel admin-table-panel flow-stagger">
+      {showRiskTable && (
+        <section ref={riskTableRef} className="panel admin-panel admin-table-panel flow-stagger">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Recent high-risk events</p>
@@ -1711,12 +1886,11 @@ const AdminDashboard = () => {
             Next
           </button>
         </div>
-      </section>
+        </section>
+      )}
 
-      <div className="admin-anchor" id="users-kyc" />
-      <div className="admin-anchor" id="loan-applications" />
-
-      <section className="panel admin-panel admin-table-panel flow-stagger">
+      {showApprovalsTable && (
+        <section className="panel admin-panel admin-table-panel flow-stagger">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Pending approvals</p>
@@ -1727,7 +1901,12 @@ const AdminDashboard = () => {
         <div className="admin-table-controls">
           <label>
             Type
-            <select name="type" value={approvalFilters.type} onChange={handleApprovalFilterChange}>
+            <select
+              name="type"
+              value={approvalTypeLock || approvalFilters.type}
+              onChange={handleApprovalFilterChange}
+              disabled={Boolean(approvalTypeLock)}
+            >
               <option value="">All</option>
               <option value="KYC">KYC</option>
               <option value="Loan">Loan</option>
@@ -1809,132 +1988,137 @@ const AdminDashboard = () => {
             </tbody>
           </table>
         </div>
-      </section>
+        </section>
+      )}
 
-      <div className="admin-anchor" id="system-services" />
-      <div className="admin-anchor" id="system-config" />
-      <div className="admin-anchor" id="system-audit-logs" />
-
-      <section className="admin-system-grid flow-stagger">
-        <article className="panel admin-panel">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Services</p>
-              <h3>System health</h3>
-            </div>
-            <span className="admin-tag">Live</span>
-          </div>
-          <div className="admin-service-list">
-            {SERVICE_HEALTH.map((service) => (
-              <div key={service.name} className="admin-service-row">
+      {showSystemGrid && (
+        <section className="admin-system-grid flow-stagger">
+          {showSystemServices && (
+            <article className="panel admin-panel">
+              <div className="panel-header">
                 <div>
-                  <strong>{service.name}</strong>
-                  <span className="admin-muted">Latency {service.latency}</span>
+                  <p className="eyebrow">Services</p>
+                  <h3>System health</h3>
                 </div>
-                <span className={`status-pill ${getStatusTone(service.status)}`}>
-                  {service.status}
-                </span>
+                <span className="admin-tag">Live</span>
               </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel admin-panel">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Config</p>
-              <h3>Recent changes</h3>
-            </div>
-            <span className="admin-tag">Audit</span>
-          </div>
-          <div className="admin-config-list">
-            {CONFIG_CHANGES.map((change) => (
-              <div key={change.id} className="admin-config-row">
-                <strong>{change.title}</strong>
-                <span className="admin-muted">
-                  {change.admin} - {change.time}
-                </span>
-                <p className="admin-muted">Reason: {change.reason}</p>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel admin-panel">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Audit trail</p>
-              <h3>Admin actions and logs</h3>
-            </div>
-            <span className="admin-tag">
-              {(overviewCounts?.actionCount ?? actions.length) +
-                (overviewCounts?.auditLogCount ?? auditLogs.length)}{' '}
-              events
-            </span>
-          </div>
-
-          {actionsStatus === API_STATUS.loading && (
-            <div className="admin-skeleton-list">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={`action-skel-${index}`} className="admin-skeleton-line" />
-              ))}
-            </div>
-          )}
-          {actionsStatus === API_STATUS.error && (
-            <p className="admin-muted">{actionsError || 'Unable to load admin actions.'}</p>
-          )}
-          {actionsStatus === API_STATUS.success && actions.length === 0 && (
-            <p className="admin-muted">No admin actions logged yet.</p>
-          )}
-          {actionsStatus === API_STATUS.success && actions.length > 0 && (
-            <div className="admin-audit-block">
-              <h4>Admin actions</h4>
-              {sortedActions.slice(0, 4).map((action) => (
-                <div key={action.id} className="admin-audit-row">
-                  <div>
-                    <strong>{formatLabel(action.actionType)}</strong>
-                    <span className="admin-muted">
-                      Performed by {action.adminUserId || 'Unknown'} -{' '}
-                      {formatDateTime(action.createdAt)}
+              <div className="admin-service-list">
+                {SERVICE_HEALTH.map((service) => (
+                  <div key={service.name} className="admin-service-row">
+                    <div>
+                      <strong>{service.name}</strong>
+                      <span className="admin-muted">Latency {service.latency}</span>
+                    </div>
+                    <span className={`status-pill ${getStatusTone(service.status)}`}>
+                      {service.status}
                     </span>
                   </div>
-                  <p className="admin-muted">Reason: {action.reason || 'Not provided'}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </article>
           )}
 
-          {auditStatus === API_STATUS.loading && (
-            <div className="admin-skeleton-list">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={`audit-skel-${index}`} className="admin-skeleton-line" />
-              ))}
-            </div>
-          )}
-          {auditStatus === API_STATUS.error && (
-            <p className="admin-muted">{auditError || 'Unable to load audit logs.'}</p>
-          )}
-          {auditStatus === API_STATUS.success && auditLogs.length === 0 && (
-            <p className="admin-muted">No audit logs recorded yet.</p>
-          )}
-          {auditStatus === API_STATUS.success && auditLogs.length > 0 && (
-            <div className="admin-audit-block">
-              <h4>Service audit logs</h4>
-              {sortedAuditLogs.slice(0, 4).map((log) => (
-                <div key={log.id} className="admin-audit-row">
-                  <div>
-                    <strong>{formatLabel(log.eventType)}</strong>
-                    <span className="admin-muted">
-                      {formatLabel(log.serviceName)} - {formatDateTime(log.createdAt)}
-                    </span>
-                  </div>
-                  <p className="admin-muted">Actor: {log.actorUserId || 'SYSTEM'}</p>
+          {showSystemConfig && (
+            <article className="panel admin-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Config</p>
+                  <h3>Recent changes</h3>
                 </div>
-              ))}
-            </div>
+                <span className="admin-tag">Audit</span>
+              </div>
+              <div className="admin-config-list">
+                {CONFIG_CHANGES.map((change) => (
+                  <div key={change.id} className="admin-config-row">
+                    <strong>{change.title}</strong>
+                    <span className="admin-muted">
+                      {change.admin} - {change.time}
+                    </span>
+                    <p className="admin-muted">Reason: {change.reason}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
           )}
-        </article>
-      </section>
+
+          {showSystemAudit && (
+            <article className="panel admin-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Audit trail</p>
+                  <h3>Admin actions and logs</h3>
+                </div>
+                <span className="admin-tag">
+                  {(overviewCounts?.actionCount ?? actions.length) +
+                    (overviewCounts?.auditLogCount ?? auditLogs.length)}{' '}
+                  events
+                </span>
+              </div>
+
+              {actionsStatus === API_STATUS.loading && (
+                <div className="admin-skeleton-list">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div key={`action-skel-${index}`} className="admin-skeleton-line" />
+                  ))}
+                </div>
+              )}
+              {actionsStatus === API_STATUS.error && (
+                <p className="admin-muted">{actionsError || 'Unable to load admin actions.'}</p>
+              )}
+              {actionsStatus === API_STATUS.success && actions.length === 0 && (
+                <p className="admin-muted">No admin actions logged yet.</p>
+              )}
+              {actionsStatus === API_STATUS.success && actions.length > 0 && (
+                <div className="admin-audit-block">
+                  <h4>Admin actions</h4>
+                  {sortedActions.slice(0, 4).map((action) => (
+                    <div key={action.id} className="admin-audit-row">
+                      <div>
+                        <strong>{formatLabel(action.actionType)}</strong>
+                        <span className="admin-muted">
+                          Performed by {action.adminUserId || 'Unknown'} -{' '}
+                          {formatDateTime(action.createdAt)}
+                        </span>
+                      </div>
+                      <p className="admin-muted">Reason: {action.reason || 'Not provided'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {auditStatus === API_STATUS.loading && (
+                <div className="admin-skeleton-list">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div key={`audit-skel-${index}`} className="admin-skeleton-line" />
+                  ))}
+                </div>
+              )}
+              {auditStatus === API_STATUS.error && (
+                <p className="admin-muted">{auditError || 'Unable to load audit logs.'}</p>
+              )}
+              {auditStatus === API_STATUS.success && auditLogs.length === 0 && (
+                <p className="admin-muted">No audit logs recorded yet.</p>
+              )}
+              {auditStatus === API_STATUS.success && auditLogs.length > 0 && (
+                <div className="admin-audit-block">
+                  <h4>Service audit logs</h4>
+                  {sortedAuditLogs.slice(0, 4).map((log) => (
+                    <div key={log.id} className="admin-audit-row">
+                      <div>
+                        <strong>{formatLabel(log.eventType)}</strong>
+                        <span className="admin-muted">
+                          {formatLabel(log.serviceName)} - {formatDateTime(log.createdAt)}
+                        </span>
+                      </div>
+                      <p className="admin-muted">Actor: {log.actorUserId || 'SYSTEM'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+          )}
+        </section>
+      )}
 
       {drawerOpen && selectedEvent && (
         <div className="admin-drawer-overlay" onClick={closeDrawer}>

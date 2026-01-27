@@ -1,4 +1,4 @@
-﻿import { MIN_PASSWORD_LENGTH, ROLE } from './constants'
+import { MIN_PASSWORD_LENGTH, PASSWORD_REQUIREMENTS_MESSAGE, ROLE } from './constants'
 
 export const isEmailValid = (value) => /\S+@\S+\.\S+/.test(String(value).toLowerCase())
 
@@ -6,6 +6,25 @@ export const isAmountValid = (value) => typeof value === 'number' && value > 0
 
 export const isRequired = (value) =>
   value !== null && value !== undefined && String(value).trim().length > 0
+
+const hasLetter = (value) => /[A-Za-z]/.test(value)
+const hasNumber = (value) => /\d/.test(value)
+const hasSpecial = (value) => /[^A-Za-z0-9\s]/.test(value)
+
+export const getPasswordChecks = (value = '') => {
+  const password = typeof value === 'string' ? value : String(value ?? '')
+  return {
+    minLength: password.length >= MIN_PASSWORD_LENGTH,
+    hasLetter: hasLetter(password),
+    hasNumber: hasNumber(password),
+    hasSpecial: hasSpecial(password),
+  }
+}
+
+export const isStrongPassword = (value) => {
+  const checks = getPasswordChecks(value)
+  return checks.minLength && checks.hasLetter && checks.hasNumber && checks.hasSpecial
+}
 
 export const validateLogin = ({ email, password, captchaToken }, options = {}) => {
   const errors = {}
@@ -36,8 +55,10 @@ export const validateRegister = (
   if (!isEmailValid(email)) {
     errors.email = 'Enter a valid email'
   }
-  if (!isRequired(password) || password.length < MIN_PASSWORD_LENGTH) {
-    errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+  if (!isRequired(password)) {
+    errors.password = 'Password is required'
+  } else if (!isStrongPassword(password)) {
+    errors.password = PASSWORD_REQUIREMENTS_MESSAGE
   }
   if (password !== confirmPassword) {
     errors.confirmPassword = 'Passwords do not match'
@@ -66,8 +87,10 @@ export const validateAdminRegister = (
   if (!isEmailValid(email)) {
     errors.email = 'Enter a valid email'
   }
-  if (!isRequired(password) || password.length < MIN_PASSWORD_LENGTH) {
-    errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+  if (!isRequired(password)) {
+    errors.password = 'Password is required'
+  } else if (!isStrongPassword(password)) {
+    errors.password = PASSWORD_REQUIREMENTS_MESSAGE
   }
   if (password !== confirmPassword) {
     errors.confirmPassword = 'Passwords do not match'
@@ -97,8 +120,10 @@ export const validatePasswordReset = (
     errors.otp = 'Enter the verification code sent to your email'
   }
   if (requirePasswords) {
-    if (!isRequired(password) || password.length < MIN_PASSWORD_LENGTH) {
-      errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+    if (!isRequired(password)) {
+      errors.password = 'Password is required'
+    } else if (!isStrongPassword(password)) {
+      errors.password = PASSWORD_REQUIREMENTS_MESSAGE
     }
     if (password !== confirmPassword) {
       errors.confirmPassword = 'Passwords do not match'

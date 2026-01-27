@@ -993,6 +993,19 @@ table td {
   background: transparent;
 }
 
+.admin-sidebar {
+  background: linear-gradient(180deg, #1f2a5b 0%, #1c2450 55%, #141a38 100%);
+  color: #e2e8f0;
+}
+
+.admin-sidebar a {
+  color: inherit;
+}
+
+.admin-sidebar a:hover {
+  color: #ffffff;
+}
+
 .navbar {
   position: sticky;
   top: 0;
@@ -2290,6 +2303,12 @@ table td {
   overflow: hidden;
 }
 
+.admin-dashboard .admin-header.admin-header--compact {
+  padding: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
 .admin-dashboard .admin-header::after {
   content: '';
   position: absolute;
@@ -2335,6 +2354,10 @@ table td {
   line-height: 1.2;
 }
 
+.admin-dashboard .admin-header.admin-header--compact .admin-header-main h1 {
+  font-size: clamp(1.45rem, 2vw, 2rem);
+}
+
 .admin-dashboard .admin-header-main p {
   margin: 0;
   font-size: 0.95rem;
@@ -2352,6 +2375,10 @@ table td {
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1.25rem;
+}
+
+.admin-dashboard .admin-header.admin-header--compact .admin-header-actions {
+  margin-top: 0.75rem;
 }
 
 .admin-dashboard .admin-role-badges {

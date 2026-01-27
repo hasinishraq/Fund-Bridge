@@ -105,3 +105,5 @@ export const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
 })
 
 export const MIN_PASSWORD_LENGTH = 8
+export const PASSWORD_REQUIREMENTS_MESSAGE =
+  'Password must be at least 8 characters and include at least one letter, one number, and one special character'

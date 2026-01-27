@@ -125,10 +125,10 @@ const Sidebar = () => {
   )
 
   return (
-    <aside className="flex w-full flex-col gap-4 border border-white/10 bg-gradient-to-b from-[#1f2a5b] via-[#1c2450] to-[#141a38] text-slate-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-64 lg:min-w-[16rem] lg:rounded-none">
+    <aside className="admin-sidebar flex w-full flex-col gap-4 border border-white/10 bg-[#141a38] bg-gradient-to-b from-[#1f2a5b] via-[#1c2450] to-[#141a38] text-slate-200 lg:sticky lg:top-16 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:w-64 lg:min-w-[16rem] lg:rounded-none">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
         <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.2em] text-slate-400">Menu</p>
+          <p className="text-[0.65rem] uppercase tracking-[0.2em] text-slate-300">Menu</p>
           <p className="text-sm font-semibold text-white">FundBridge</p>
         </div>
         <span className="rounded-full bg-white/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/80">
@@ -139,7 +139,7 @@ const Sidebar = () => {
       <nav className="flex flex-1 flex-col gap-6 px-3 pb-4">
         {!isAdmin && mainLinks.length > 0 && (
           <div className="space-y-2">
-            <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
+            <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-300">
               Workspace
             </p>
             <div className="space-y-1">
@@ -153,7 +153,7 @@ const Sidebar = () => {
                       'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
                       isActive
                         ? 'bg-white/10 text-white shadow-sm'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white',
+                        : 'text-slate-200 hover:bg-white/5 hover:text-white',
                     ].join(' ')
                   }
                 >
@@ -175,7 +175,7 @@ const Sidebar = () => {
 
         {!isAdmin && walletLinks.length > 0 && (
           <div className="space-y-2">
-            <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
+            <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-300">
               Wallet
             </p>
             <div className="space-y-1">
@@ -189,7 +189,7 @@ const Sidebar = () => {
                       'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
                       isActive
                         ? 'bg-white/10 text-white shadow-sm'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white',
+                        : 'text-slate-200 hover:bg-white/5 hover:text-white',
                     ].join(' ')
                   }
                 >
@@ -212,7 +212,7 @@ const Sidebar = () => {
         {isAdmin &&
           ADMIN_NAV_GROUPS.map((group) => (
             <div key={group.title} className="space-y-2">
-              <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
+              <p className="px-3 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-slate-300">
                 {group.title}
               </p>
               <div className="space-y-1">
@@ -226,7 +226,7 @@ const Sidebar = () => {
                         'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition',
                         isActive
                           ? 'bg-white/10 text-white shadow-sm'
-                          : 'text-slate-300 hover:bg-white/5 hover:text-white',
+                          : 'text-slate-200 hover:bg-white/5 hover:text-white',
                       ].join(' ')
                     }
                   >

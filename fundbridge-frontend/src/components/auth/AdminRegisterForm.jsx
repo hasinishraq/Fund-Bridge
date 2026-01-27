@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { startAdminRegistration } from '../../api/authApi'
 import { isEmailValid, validateAdminRegister } from '../../utils/validators'
+import PasswordChecklist from './PasswordChecklist'
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
@@ -268,6 +269,7 @@ const AdminRegisterForm = ({ onSubmit, loading }) => {
         {errors.password && (
           <span className="text-xs font-medium text-rose-600">{errors.password}</span>
         )}
+        <PasswordChecklist password={values.password} className="mt-2" />
       </div>
 
       <div className="space-y-1.5">

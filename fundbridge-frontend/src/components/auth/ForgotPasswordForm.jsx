@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { requestPasswordReset, resetPassword } from '../../api/authApi'
 import { validatePasswordReset } from '../../utils/validators'
+import PasswordChecklist from './PasswordChecklist'
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
@@ -266,6 +267,7 @@ const ForgotPasswordForm = () => {
             {errors.password && (
               <span className="text-xs font-medium text-rose-600">{errors.password}</span>
             )}
+            <PasswordChecklist password={values.password} className="mt-2" />
           </div>
 
           <div className="space-y-1.5">
