@@ -5,6 +5,7 @@ import java.util.List;
 
 public record AdminDashboardOverviewResponse(
         AdminKpiSnapshotResponse kpis,
+        SystemHealthResponse systemHealth,
         List<AdminRiskEventResponse> riskEvents,
         List<AdminApprovalResponse> approvals,
         List<AdminAlertResponse> alerts,

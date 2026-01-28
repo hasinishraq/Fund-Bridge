@@ -8,6 +8,7 @@ import com.fundbridge.adminservice.dto.AdminDashboardOverviewResponse;
 import com.fundbridge.adminservice.dto.AdminDashboardSummaryResponse;
 import com.fundbridge.adminservice.dto.AdminKpiSnapshotResponse;
 import com.fundbridge.adminservice.dto.AdminRiskEventResponse;
+import com.fundbridge.adminservice.dto.SystemHealthResponse;
 import com.fundbridge.adminservice.entity.AdminAlertStatus;
 import com.fundbridge.adminservice.repository.AdminActionRepository;
 import com.fundbridge.adminservice.repository.AdminAlertRepository;
@@ -29,6 +30,7 @@ public class AdminDashboardService {
     private final AdminApprovalService approvalService;
     private final AdminActionService actionService;
     private final AdminAuditLogService auditLogService;
+    private final AdminSystemHealthService systemHealthService;
     private final AdminAlertRepository alertRepository;
     private final AdminRiskEventRepository riskEventRepository;
     private final AdminApprovalRepository approvalRepository;
@@ -42,6 +44,7 @@ public class AdminDashboardService {
                                  AdminApprovalService approvalService,
                                  AdminActionService actionService,
                                  AdminAuditLogService auditLogService,
+                                 AdminSystemHealthService systemHealthService,
                                  AdminAlertRepository alertRepository,
                                  AdminRiskEventRepository riskEventRepository,
                                  AdminApprovalRepository approvalRepository,
@@ -54,6 +57,7 @@ public class AdminDashboardService {
         this.approvalService = approvalService;
         this.actionService = actionService;
         this.auditLogService = auditLogService;
+        this.systemHealthService = systemHealthService;
         this.alertRepository = alertRepository;
         this.riskEventRepository = riskEventRepository;
         this.approvalRepository = approvalRepository;
@@ -100,6 +104,12 @@ public class AdminDashboardService {
             }
         }
 
+        var systemHealth = (SystemHealthResponse) null;
+        try {
+            systemHealth = systemHealthService.getSystemHealth();
+        } catch (Exception ignored) {
+        }
+
         int safeRiskLimit = clampLimit(riskLimit, 20);
         int safeApprovalLimit = clampLimit(approvalLimit, 10);
         int safeAlertLimit = clampLimit(alertLimit, 6);
@@ -141,6 +151,7 @@ public class AdminDashboardService {
 
         return new AdminDashboardOverviewResponse(
                 kpis,
+                systemHealth,
                 riskEvents,
                 approvals,
                 alerts,

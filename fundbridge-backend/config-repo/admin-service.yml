@@ -22,3 +22,11 @@ wallet:
 loan:
   client:
     base-url: ${LOAN_SERVICE_URL:http://localhost:8092}
+
+admin:
+  system-health:
+    timeout: 2s
+    health-path: /actuator/health
+    static-services:
+      - name: discovery-server
+        base-url: ${DISCOVERY_SERVER_URL:http://localhost:8761}
