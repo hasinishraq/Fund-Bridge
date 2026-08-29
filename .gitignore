@@ -1,2 +1,32 @@
-# Local environment files
-.env*
+# Environment files
+*.env
+*.env.*
+.env
+.env.*
+**/*.env
+**/*.env.*
+
+# Allow example env files
+!*.env.example
+!*.env.*.example
+!*.env.sample
+!**/*.env.example
+!**/*.env.*.example
+!**/*.env.sample
+!**/env.example
+!env.example
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# Build artifacts
+**/target/
+**/build/
+**/dist/
+**/node_modules/

@@ -1,8 +1,27 @@
 HELP.md
 target/
+**/target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+
+# Environment files
+*.env
+*.env.*
+.env
+.env.*
+env/*.env
+env/**/*.env
+
+# Allow example env files
+!*.env.example
+!*.env.*.example
+!*.env.sample
+!**/*.env.example
+!**/*.env.*.example
+!**/*.env.sample
+!**/env.example
+!env.example
 
 ### STS ###
 .apt_generated
